@@ -26,8 +26,8 @@ const ScoreSchema = new mongoose.Schema({
   },
   boardSize: {
     type: Number,
-    enum: [6, 8, 10],
-    default: 8
+    enum: [10, 15, 25],
+    default: 10
   },
   difficulty: {
     type: String,

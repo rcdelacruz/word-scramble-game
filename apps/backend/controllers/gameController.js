@@ -6,10 +6,10 @@ const Score = require('../models/Score');
 exports.getLetterSet = (req, res) => {
   try {
     const difficulty = req.query.difficulty || 'medium';
-    const size = parseInt(req.query.size) || 8;
+    const size = parseInt(req.query.size) || 10;
 
     // Validate board size
-    const validSize = [6, 8, 10].includes(size) ? size : 8;
+    const validSize = [10, 15, 25].includes(size) ? size : 10;
 
     const letters = wordUtils.generateLetterSet(difficulty, validSize);
 

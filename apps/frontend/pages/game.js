@@ -15,7 +15,7 @@ export default function Game() {
   const [loading, setLoading] = useState(false);
   const [apiUrl, setApiUrl] = useState('');
   const [difficulty, setDifficulty] = useState('medium'); // 'easy', 'medium', 'hard'
-  const [boardSize, setBoardSize] = useState(8); // 6, 8, or 10 letters
+  const [boardSize, setBoardSize] = useState(10); // 10, 15, or 25 letters
   const [username, setUsername] = useState('');
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
 
@@ -492,7 +492,7 @@ export default function Game() {
           <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-md mb-6 text-left">
             <h2 className="text-xl font-bold text-indigo-700 mb-3">How to Play:</h2>
             <ol className="list-decimal pl-5 space-y-2 text-gray-700">
-              <li>Choose your board size (6, 8, or 10 letters)</li>
+              <li>Choose your board size (10, 15, or 25 letters)</li>
               <li>Form words using the given letters</li>
               <li>Words must be at least 3 letters long</li>
               <li>Longer words earn more points!</li>
@@ -526,7 +526,7 @@ export default function Game() {
             <div>
               <p className="text-gray-700 mb-2">Board Size:</p>
               <div className="flex justify-center space-x-2">
-                {[6, 8, 10].map((size) => (
+                {[10, 15, 25].map((size) => (
                   <button
                     key={size}
                     onClick={() => setBoardSize(size)}
@@ -598,13 +598,13 @@ export default function Game() {
             </div>
 
             {/* Display the letters user can choose from */}
-            <div className={`grid ${boardSize === 6 ? 'grid-cols-3' : boardSize === 8 ? 'grid-cols-4' : 'grid-cols-5'} gap-3 mb-6`}>
+            <div className={`grid ${boardSize === 10 ? 'grid-cols-5' : boardSize === 15 ? 'grid-cols-5' : 'grid-cols-5'} gap-2 mb-6 max-h-96 overflow-y-auto p-2`}>
               {letters.map((letter, index) => (
                 <button
                   key={index}
                   onClick={() => selectLetter(letter, index)}
                   disabled={isLetterSelected(index) || loading}
-                  className={`${boardSize === 10 ? 'w-14 h-14 text-xl' : 'w-16 h-16 text-2xl'} font-bold rounded-lg transform transition-all duration-150 ${
+                  className={`${boardSize === 25 ? 'w-12 h-12 text-lg' : boardSize === 15 ? 'w-14 h-14 text-xl' : 'w-16 h-16 text-2xl'} font-bold rounded-lg transform transition-all duration-150 ${
                     isLetterSelected(index)
                       ? 'bg-gray-300 text-gray-500 scale-90'
                       : 'bg-indigo-500 text-white hover:bg-indigo-600 hover:scale-105 shadow-md'

@@ -17,12 +17,12 @@ const letterFrequencies = {
 };
 
 // Generate a set of letters based on difficulty and board size
-exports.generateLetterSet = (difficulty = 'medium', size = 8) => {
+exports.generateLetterSet = (difficulty = 'medium', size = 10) => {
   const { vowels, consonants } = letterFrequencies[difficulty] || letterFrequencies.medium;
   const letters = [];
 
   // Validate board size
-  const validSize = [6, 8, 10].includes(size) ? size : 8;
+  const validSize = [10, 15, 25].includes(size) ? size : 10;
 
   // Calculate vowel count based on board size and difficulty
   let vowelCount;
