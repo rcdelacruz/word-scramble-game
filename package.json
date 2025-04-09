@@ -14,7 +14,8 @@
     "prepare": "cd apps/backend && node scripts/fetchDictionary.js",
     "dictionary": "cd apps/backend && node scripts/fetchDictionary.js",
     "postinstall": "cd apps/backend && node scripts/fetchDictionary.js && npx next telemetry disable",
-    "disable-telemetry": "npx turbo telemetry disable && npx next telemetry disable"
+    "disable-telemetry": "npx turbo telemetry disable && npx next telemetry disable",
+    "setup-env": "node -e \"const fs=require('fs');const path=require('path');const be=path.join('apps','backend','.env.example');const fe=path.join('apps','frontend','.env.example');const beTarget=path.join('apps','backend','.env');const feTarget=path.join('apps','frontend','.env');if(fs.existsSync(be) && !fs.existsSync(beTarget))fs.copyFileSync(be,beTarget);if(fs.existsSync(fe) && !fs.existsSync(feTarget))fs.copyFileSync(fe,feTarget);console.log('Environment files created from examples');\""
   },
   "devDependencies": {
     "eslint": "^8.53.0",
