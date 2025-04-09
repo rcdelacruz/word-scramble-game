@@ -9,6 +9,7 @@ This project features a simple but engaging word game where players create words
 - Single-player word formation gameplay
 - Timed challenges (60 seconds per round)
 - Points system that rewards longer words
+- Comprehensive English word dictionary
 - Leaderboard to track high scores
 - User accounts to save progress
 - Simple, intuitive interface
@@ -26,6 +27,7 @@ This project features a simple but engaging word game where players create words
 - Express
 - MongoDB (with Mongoose)
 - JWT for authentication
+- Comprehensive English dictionary (~370,000 words)
 
 ## Getting Started
 
@@ -55,12 +57,22 @@ cp .env.example .env
 cd backend
 npm install
 ```
+> Note: This will automatically download and process the English dictionary file.
 
 4. Install frontend dependencies:
 ```bash
 cd frontend
 npm install
 ```
+
+### Dictionary
+
+The game uses a comprehensive English dictionary to validate words. During installation:
+
+- The setup script will automatically download an English dictionary from GitHub repositories.
+- It filters out non-alphabetic words and those shorter than 3 letters.
+- If the download fails, a fallback mini-dictionary is created with common words.
+- You can manually trigger a dictionary update by running `npm run fetch-dictionary` in the backend folder.
 
 ### Running the Application
 
@@ -91,6 +103,8 @@ npm run dev
 
 - `/frontend` - Next.js client application
 - `/backend` - Node.js/Express API server
+  - `/backend/data` - Contains the dictionary file
+  - `/backend/scripts` - Utility scripts including dictionary downloader
 
 ## Contributing
 
@@ -102,5 +116,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- Dictionary data provided by [placeholder]
+- Dictionary data sourced from [english-words](https://github.com/dwyl/english-words) and [google-10000-english](https://github.com/first20hours/google-10000-english)
 - Inspiration from games like Scrabble and Word Cookies
