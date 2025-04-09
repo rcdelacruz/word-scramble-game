@@ -1,17 +1,53 @@
 const fs = require('fs');
 const path = require('path');
 
-// In a real implementation, we would load a full dictionary file
-// For now, we'll create a mini dictionary for demonstration
-const dictionary = {
-  'cat': true, 'bat': true, 'rat': true, 'hat': true, 'mat': true, 
-  'sat': true, 'pat': true, 'chat': true, 'that': true, 'flat': true, 
-  'brat': true, 'spat': true, 'stat': true, 'scat': true, 'splat': true, 
-  'combat': true, 'dog': true, 'log': true, 'fog': true, 'bog': true, 
-  'cog': true, 'jog': true, 'frog': true, 'smog': true, 'blog': true,
-  'word': true, 'game': true, 'play': true, 'time': true, 'fun': true, 
-  'high': true, 'score': true, 'level': true, 'win': true, 'lose': true
-};
+let dictionary = {};
+
+// Load dictionary from file
+try {
+  // We'll use a path relative to this file
+  const dictionaryPath = path.join(__dirname, '../data/dictionary.txt');
+  
+  // Check if the dictionary file exists
+  if (fs.existsSync(dictionaryPath)) {
+    // Read dictionary file and convert to Set for O(1) lookups
+    const words = fs.readFileSync(dictionaryPath, 'utf8')
+      .toLowerCase()
+      .split(/\r?\n/)
+      .filter(word => word.length >= 3 && /^[a-z]+$/.test(word));
+    
+    // Convert array to dictionary object for fast lookups
+    words.forEach(word => {
+      dictionary[word] = true;
+    });
+    
+    console.log(`Dictionary loaded: ${Object.keys(dictionary).length} words`);
+  } else {
+    console.warn('Dictionary file not found, using fallback mini dictionary');
+    // Fallback mini dictionary if file doesn't exist
+    dictionary = {
+      'cat': true, 'bat': true, 'rat': true, 'hat': true, 'mat': true, 
+      'sat': true, 'pat': true, 'chat': true, 'that': true, 'flat': true, 
+      'brat': true, 'spat': true, 'stat': true, 'scat': true, 'splat': true, 
+      'combat': true, 'dog': true, 'log': true, 'fog': true, 'bog': true, 
+      'cog': true, 'jog': true, 'frog': true, 'smog': true, 'blog': true,
+      'word': true, 'game': true, 'play': true, 'time': true, 'fun': true, 
+      'high': true, 'score': true, 'level': true, 'win': true, 'lose': true
+    };
+  }
+} catch (error) {
+  console.error('Error loading dictionary:', error);
+  // Fallback mini dictionary
+  dictionary = {
+    'cat': true, 'bat': true, 'rat': true, 'hat': true, 'mat': true, 
+    'sat': true, 'pat': true, 'chat': true, 'that': true, 'flat': true, 
+    'brat': true, 'spat': true, 'stat': true, 'scat': true, 'splat': true, 
+    'combat': true, 'dog': true, 'log': true, 'fog': true, 'bog': true, 
+    'cog': true, 'jog': true, 'frog': true, 'smog': true, 'blog': true,
+    'word': true, 'game': true, 'play': true, 'time': true, 'fun': true, 
+    'high': true, 'score': true, 'level': true, 'win': true, 'lose': true
+  };
+}
 
 // Check if a word exists in our dictionary
 exports.isValidWord = (word) => {
@@ -31,16 +67,20 @@ exports.getPossibleWords = (letters) => {
   if (!letters || !Array.isArray(letters)) return [];
   
   const possibleWords = [];
-  const letterStr = letters.join('');
+  
+  // Get a string of all letters joined
+  const availableLetters = letters.map(l => l.toLowerCase());
   
   // In a real implementation, we'd use a more efficient algorithm
-  // For now, we'll just check each word in our mini dictionary
+  // For now, we'll check each word in our dictionary
   Object.keys(dictionary).forEach(word => {
+    if (word.length < 3) return; // Skip very short words
+    
     let canForm = true;
     const letterCounts = {};
     
     // Count available letters
-    letters.forEach(letter => {
+    availableLetters.forEach(letter => {
       letterCounts[letter] = (letterCounts[letter] || 0) + 1;
     });
     
