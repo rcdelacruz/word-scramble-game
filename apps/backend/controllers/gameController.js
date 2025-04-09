@@ -103,7 +103,7 @@ exports.submitScore = async (req, res) => {
       score: score,
       wordsFound: wordsFound || [],
       gameMode: gameMode || 'classic',
-      boardSize: req.body.boardSize || 8,
+      boardSize: req.body.boardSize || 10,
       difficulty: req.body.difficulty || 'medium'
     });
 
@@ -154,15 +154,41 @@ exports.getLeaderboard = async (req, res) => {
   try {
     const { gameMode, timeFrame, limit = 10 } = req.query;
 
-    // Return an empty leaderboard for a clean slate
-    // In a real implementation, we would query a database
-    const emptyLeaderboard = [];
+    // Build MongoDB query
+    const query = {};
 
-    console.log('Returning empty leaderboard for clean slate');
+    // Filter by game mode if specified
+    if (gameMode) {
+      query.gameMode = gameMode;
+    }
+
+    // Filter by time frame if specified
+    if (timeFrame && timeFrame !== 'all') {
+      const now = new Date();
+      let cutoffDate = new Date();
+
+      if (timeFrame === 'daily') {
+        cutoffDate.setDate(now.getDate() - 1);
+      } else if (timeFrame === 'weekly') {
+        cutoffDate.setDate(now.getDate() - 7);
+      } else if (timeFrame === 'monthly') {
+        cutoffDate.setMonth(now.getMonth() - 1);
+      }
+
+      query.createdAt = { $gte: cutoffDate };
+    }
+
+    // Query MongoDB for scores
+    const scores = await Score.find(query)
+      .sort({ score: -1 }) // Sort by score in descending order
+      .limit(parseInt(limit))
+      .lean(); // Convert to plain JavaScript objects
+
+    console.log(`Returning ${scores.length} scores for leaderboard`);
 
     res.json({
       success: true,
-      scores: emptyLeaderboard
+      scores: scores
     });
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
