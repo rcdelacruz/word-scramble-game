@@ -1,32 +1,30 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import axios from 'axios';
 import { gameService } from '../services/api';
+import { motion } from 'framer-motion';
+import { useToast } from '../components/ToastProvider';
+import Confetti from '../components/Confetti';
 
 export default function Game() {
+  const { addToast } = useToast();
   const [letters, setLetters] = useState([]);
   const [selectedLetters, setSelectedLetters] = useState([]);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [score, setScore] = useState(0);
   const [message, setMessage] = useState('');
   const [usedWords, setUsedWords] = useState([]);
   const [timer, setTimer] = useState(60);
   const [gameActive, setGameActive] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [apiUrl, setApiUrl] = useState('');
   const [difficulty, setDifficulty] = useState('medium'); // 'easy', 'medium', 'hard'
   const [boardSize, setBoardSize] = useState(10); // 10, 15, or 25 letters
   const [username, setUsername] = useState('');
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
+  const [offlineMode, setOfflineMode] = useState(false);
 
-  // Use hardcoded API URL - directly from environment variable
+  // Log debug information
   useEffect(() => {
-    // Use the environment variable from .env file
-    const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-    console.log('Using API URL from environment:', url);
-    setApiUrl(url);
-
-    // Log debug information
     if (typeof window !== 'undefined') {
       console.log('Current frontend URL:', window.location.href);
     }
@@ -107,28 +105,30 @@ export default function Game() {
   // Function to check if a word is valid by calling the API
   const validateWordWithAPI = async (word, letters) => {
     try {
-      if (!apiUrl) {
-        throw new Error('API URL not set');
-      }
-
-      console.log('Validating word with API:', word);
-      console.log('API URL:', apiUrl);
+      console.log('Validating word:', word);
       console.log('Letters:', letters);
+      console.log('Offline mode:', offlineMode);
 
       setLoading(true);
+
+      if (offlineMode) {
+        // Use local validation in offline mode
+        console.log('Using local validation in offline mode');
+        const result = validateWordLocally(word, letters);
+        setLoading(false);
+        return result;
+      }
+
       // Try to validate using the API
-      const response = await axios.post(`${apiUrl}/game/validate`, {
-        word,
-        letters
-      });
+      const response = await gameService.validateWord(word, letters);
 
       setLoading(false);
-      console.log('API Response:', response.data);
+      console.log('API Response:', response);
 
-      if (response.data && response.data.success) {
+      if (response && response.success) {
         return {
-          isValid: response.data.isValid,
-          score: response.data.score
+          isValid: response.isValid,
+          score: response.score
         };
       }
       throw new Error('API validation failed');
@@ -162,6 +162,32 @@ export default function Game() {
     if (length >= 8) score += 10; // Extra bonus for 8+ letter words
 
     return score;
+  };
+
+  // Validate word locally (for offline mode)
+  const validateWordLocally = (word, letters) => {
+    // Check if the word is in the dictionary
+    const isInDictionary = fallbackDictionary.has(word.toLowerCase());
+
+    // Check if the word can be formed from the available letters
+    const letterCounts = {};
+    letters.forEach(letter => {
+      letterCounts[letter] = (letterCounts[letter] || 0) + 1;
+    });
+
+    const wordLetters = word.toLowerCase().split('');
+    const canBeFormed = wordLetters.every(letter => {
+      if (!letterCounts[letter]) return false;
+      letterCounts[letter]--;
+      return true;
+    });
+
+    const isValid = isInDictionary && canBeFormed;
+
+    return {
+      isValid,
+      score: isValid ? calculateLocalScore(word) : 0
+    };
   };
 
   // Start a new game
@@ -223,6 +249,7 @@ export default function Game() {
     } else if (timer === 0) {
       setGameActive(false);
       setMessage('Game over!');
+      addToast(`Game over! Final score: ${score}`, 'info');
     }
 
     return () => clearInterval(interval);
@@ -245,12 +272,14 @@ export default function Game() {
     // Check if word has already been used
     if (usedWords.includes(word)) {
       setMessage('You already used that word!');
+      addToast('You already used that word!', 'error');
       return;
     }
 
     // Word must be at least 3 letters
     if (word.length < 3) {
       setMessage('Words must be at least 3 letters long.');
+      addToast('Words must be at least 3 letters long.', 'error');
       return;
     }
 
@@ -263,15 +292,23 @@ export default function Game() {
         setScore(score + validation.score);
         setUsedWords([...usedWords, word]);
         setMessage(`Nice! +${validation.score} points.`);
+        addToast(`Nice! +${validation.score} points for "${word}"`, 'success');
+
+        // Show confetti for high-scoring words (5+ points)
+        if (validation.score >= 5) {
+          setShowConfetti(true);
+        }
 
         // Reset selected letters but keep the same available letters
         setSelectedLetters([]);
       } else {
         setMessage('Not a valid word.');
+        addToast('Not a valid word.', 'error');
       }
     } catch (error) {
       console.log('Error submitting word:', error);
       setMessage('Error checking word. Try again.');
+      addToast('Error checking word. Try again.', 'error');
     }
   };
 
@@ -287,14 +324,16 @@ export default function Game() {
 
   // Use local dictionary only mode
   const useLocalMode = () => {
-    setApiUrl('');
+    setOfflineMode(true);
     setMessage('Using local dictionary mode - no server connection needed');
+    addToast('Using local dictionary mode', 'info');
   };
 
   // Submit score to the leaderboard
   const submitScore = async () => {
     if (!username.trim()) {
       setMessage('Please enter a username to submit your score');
+      addToast('Please enter a username to submit your score', 'error');
       return;
     }
 
@@ -309,24 +348,43 @@ export default function Game() {
         difficulty: difficulty
       };
 
-      if (apiUrl) {
-        const response = await gameService.submitScore(scoreData);
-        if (response && response.success) {
-          setScoreSubmitted(true);
-          setMessage('Score submitted successfully!');
-        } else {
-          setMessage('Failed to submit score. Please try again.');
-        }
-      } else {
-        // Mock submission for offline mode
+      if (offlineMode) {
+        // Offline mode - mock submission
+        console.log('Using offline mode for score submission');
         setTimeout(() => {
           setScoreSubmitted(true);
-          setMessage('Score submitted successfully!');
+          setMessage('Score submitted successfully (offline mode)');
+          addToast('Score submitted successfully (offline mode)', 'success');
+          setShowConfetti(true);
         }, 500);
+      } else {
+        try {
+          // Try to submit to the API
+          const response = await gameService.submitScore(scoreData);
+          if (response && response.success) {
+            setScoreSubmitted(true);
+            setMessage('Score submitted successfully!');
+            addToast('Score submitted successfully!', 'success');
+            setShowConfetti(true);
+          } else {
+            setMessage('Failed to submit score. Please try again.');
+            addToast('Failed to submit score. Please try again.', 'error');
+          }
+        } catch (error) {
+          console.log('API submission failed, using offline mode');
+          // Fallback to offline mode if API fails
+          setTimeout(() => {
+            setScoreSubmitted(true);
+            setMessage('Score submitted successfully (offline mode)');
+            addToast('Score submitted successfully (offline mode)', 'success');
+            setShowConfetti(true);
+          }, 500);
+        }
       }
     } catch (error) {
       console.error('Error submitting score:', error);
       setMessage('Error submitting score. Please try again.');
+      addToast('Error submitting score. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -372,117 +430,172 @@ export default function Game() {
   }, [gameActive, letters, selectedLetters]);
 
   return (
-    <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-100 to-purple-100 min-h-screen">
+    <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 dark:from-indigo-950 dark:via-purple-950 dark:to-blue-950 min-h-screen transition-colors duration-300">
       <Head>
         <title>Play Word Scramble</title>
         <meta name="description" content="Play the Word Scramble game" />
       </Head>
 
-      <h1 className="text-4xl font-bold mb-6 text-indigo-800">Word Scramble</h1>
+      {/* Confetti effect for high-scoring words */}
+      <Confetti
+        active={showConfetti}
+        duration={2000}
+        onComplete={() => setShowConfetti(false)}
+      />
+
+      <h1 className="text-4xl md:text-5xl font-bold mb-6 text-game-text dark:text-white font-display">Word <span className="text-game-primary">Scramble</span></h1>
 
       {!gameActive && timer !== 60 && (
         <div className="mb-8 text-center">
-          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md mb-6 mx-auto">
-            <div className="flex justify-center mb-4">
-              <div className="bg-indigo-100 rounded-full p-3">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-            </div>
-            <h2 className="text-3xl font-bold text-indigo-700 mb-2">Game Over!</h2>
-            <div className="flex justify-center space-x-8 my-4">
-              <div className="text-center">
-                <p className="text-gray-500 text-sm">SCORE</p>
-                <p className="text-3xl font-bold text-indigo-800">{score}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-gray-500 text-sm">WORDS</p>
-                <p className="text-3xl font-bold text-indigo-800">{usedWords.length}</p>
+          <motion.div
+            className="game-card w-full max-w-md mb-6 mx-auto overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-gradient-to-r from-game-primary to-game-secondary opacity-90"></div>
+              <div className="relative py-6 px-4 text-white">
+                <div className="flex justify-center mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h2 className="text-3xl font-bold font-display mb-1">Game Over!</h2>
+                <p className="text-white/80">Here's how you did</p>
               </div>
             </div>
 
-            {usedWords.length > 0 && (
-              <div className="mt-4 mb-6">
-                <p className="text-gray-600 mb-2">Your best word:</p>
-                <p className="text-xl font-bold text-indigo-700">
-                  {usedWords.reduce((best, word) =>
-                    (calculateLocalScore(word) > calculateLocalScore(best) ? word : best), usedWords[0])}
-                </p>
+            <div className="px-6 pb-6">
+              <div className="flex justify-center space-x-12 my-6">
+                <motion.div
+                  className="text-center"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <p className="text-game-text-light dark:text-gray-400 text-sm font-medium">SCORE</p>
+                  <p className="text-4xl font-bold text-game-primary dark:text-game-primary">{score}</p>
+                </motion.div>
+                <motion.div
+                  className="text-center"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3, duration: 0.3 }}
+                >
+                  <p className="text-game-text-light dark:text-gray-400 text-sm font-medium">WORDS</p>
+                  <p className="text-4xl font-bold text-game-secondary dark:text-game-secondary">{usedWords.length}</p>
+                </motion.div>
               </div>
-            )}
+
+              {usedWords.length > 0 && (
+                <motion.div
+                  className="mt-6 mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.3 }}
+                >
+                  <p className="text-game-text-light dark:text-gray-300 mb-2 font-medium">Your best word:</p>
+                  <p className="text-xl font-bold text-game-primary dark:text-game-primary">
+                    {usedWords.reduce((best, word) =>
+                      (calculateLocalScore(word) > calculateLocalScore(best) ? word : best), usedWords[0])}
+                  </p>
+                </motion.div>
+              )}
 
             {/* Score submission section */}
-            {!scoreSubmitted ? (
-              <div className="mt-6">
-                <div className="mb-4">
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1 text-left">
-                    Enter your name for the leaderboard:
-                  </label>
-                  <input
-                    type="text"
-                    id="username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Your name"
-                    maxLength={20}
-                  />
-                </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5, duration: 0.3 }}
+            >
+              {!scoreSubmitted ? (
+                <div className="mt-6">
+                  <div className="mb-4">
+                    <label htmlFor="username" className="block text-sm font-medium text-game-text dark:text-gray-300 mb-2 text-left">
+                      Enter your name for the leaderboard:
+                    </label>
+                    <input
+                      type="text"
+                      id="username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-game-primary focus:border-transparent dark:bg-gray-800 dark:text-white transition-colors duration-200"
+                      placeholder="Your name"
+                      maxLength={20}
+                    />
+                  </div>
 
-                <div className="flex space-x-3">
-                  <button
-                    onClick={submitScore}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition-colors flex items-center justify-center"
-                    disabled={loading || !username.trim()}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <motion.button
+                      onClick={submitScore}
+                      className="flex-1 px-4 py-3 bg-game-success text-white font-medium rounded-xl shadow-game hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+                      disabled={loading || !username.trim()}
+                      whileHover={{ scale: loading || !username.trim() ? 1 : 1.03 }}
+                      whileTap={{ scale: loading || !username.trim() ? 1 : 0.97 }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                      {loading ? 'Submitting...' : 'Submit Score'}
+                    </motion.button>
+
+                    <motion.button
+                      onClick={resetGame}
+                      className="flex-1 px-4 py-3 bg-game-primary text-white font-medium rounded-xl shadow-game hover:bg-indigo-600 transition-all flex items-center justify-center gap-2"
+                      disabled={loading}
+                      whileHover={{ scale: loading ? 1 : 1.03 }}
+                      whileTap={{ scale: loading ? 1 : 0.97 }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                      </svg>
+                      Play Again
+                    </motion.button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-6">
+                  <motion.div
+                    className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 mb-6"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                    {loading ? 'Submitting...' : 'Submit Score'}
-                  </button>
+                    <p className="text-green-800 dark:text-green-300 font-medium">Score submitted successfully!</p>
+                    <p className="text-green-600 dark:text-green-400 text-sm mt-1">Check the leaderboard to see your ranking.</p>
+                  </motion.div>
 
-                  <button
-                    onClick={resetGame}
-                    className="flex-1 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center"
-                    disabled={loading}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                    </svg>
-                    Play Again
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-6">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                  <p className="text-green-800 font-medium">Score submitted successfully!</p>
-                  <p className="text-green-600 text-sm mt-1">Check the leaderboard to see your ranking.</p>
-                </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <motion.button
+                      onClick={() => window.location.href = '/leaderboard'}
+                      className="flex-1 px-4 py-3 bg-game-accent text-white font-medium rounded-xl shadow-game hover:bg-sky-600 transition-all flex items-center justify-center gap-2"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                      </svg>
+                      View Leaderboard
+                    </motion.button>
 
-                <div className="flex space-x-3">
-                  <Link href="/leaderboard" className="flex-1 px-4 py-2 bg-indigo-500 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-600 transition-colors flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                    </svg>
-                    View Leaderboard
-                  </Link>
-
-                  <button
-                    onClick={resetGame}
-                    className="flex-1 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors flex items-center justify-center"
-                    disabled={loading}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                    </svg>
-                    Play Again
-                  </button>
+                    <motion.button
+                      onClick={resetGame}
+                      className="flex-1 px-4 py-3 bg-game-primary text-white font-medium rounded-xl shadow-game hover:bg-indigo-600 transition-all flex items-center justify-center gap-2"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                      </svg>
+                      Play Again
+                    </motion.button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </motion.div>
+            </div>
+          </motion.div>
         </div>
       )}
 
@@ -502,64 +615,82 @@ export default function Game() {
           </div>
 
           {/* Game settings */}
-          <div className="mb-6 space-y-4">
+          <div className="game-card mb-8 space-y-6">
+            <h3 className="text-xl font-bold text-game-text dark:text-white font-display mb-4">Game Settings</h3>
+
             {/* Difficulty selector */}
             <div>
-              <p className="text-gray-700 mb-2">Select Difficulty:</p>
-              <div className="flex justify-center space-x-2">
+              <p className="text-game-text-light dark:text-gray-300 mb-3 font-medium">Select Difficulty:</p>
+              <div className="flex flex-wrap justify-center gap-3">
                 {['easy', 'medium', 'hard'].map((level) => (
-                  <button
+                  <motion.button
                     key={level}
                     onClick={() => setDifficulty(level)}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${difficulty === level
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    className={`px-5 py-2.5 rounded-xl font-medium transition-all ${difficulty === level
+                      ? 'bg-game-primary text-white shadow-game'
+                      : 'bg-gray-100 dark:bg-gray-800 text-game-text-light dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
                   >
                     {level.charAt(0).toUpperCase() + level.slice(1)}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
 
             {/* Board size selector */}
             <div>
-              <p className="text-gray-700 mb-2">Board Size:</p>
-              <div className="flex justify-center space-x-2">
+              <p className="text-game-text-light dark:text-gray-300 mb-3 font-medium">Board Size:</p>
+              <div className="flex flex-wrap justify-center gap-3">
                 {[10, 15, 25].map((size) => (
-                  <button
+                  <motion.button
                     key={size}
                     onClick={() => setBoardSize(size)}
-                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${boardSize === size
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    className={`px-5 py-2.5 rounded-xl font-medium transition-all ${boardSize === size
+                      ? 'bg-game-secondary text-white shadow-game'
+                      : 'bg-gray-100 dark:bg-gray-800 text-game-text-light dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                       }`}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
                   >
                     {size} Letters
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
           </div>
 
-          <button
+          <motion.button
             onClick={startGame}
-            className="px-8 py-3 bg-indigo-600 text-white text-xl font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors mb-4 animate-pulse"
+            className="game-button-primary px-8 py-4 text-xl font-semibold mb-6 flex items-center justify-center gap-2 w-full max-w-xs mx-auto"
             disabled={loading}
+            whileHover={{ scale: loading ? 1 : 1.03 }}
+            whileTap={{ scale: loading ? 1 : 0.97 }}
+            animate={{ y: [0, -5, 0], transition: { repeat: Infinity, duration: 2 } }}
           >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             {loading ? 'Loading...' : 'Start Game'}
-          </button>
+          </motion.button>
 
-          <div className="mb-4 flex flex-col space-y-2">
-            <button
+          <div className="mb-8 flex flex-col sm:flex-row gap-3 justify-center">
+            <motion.button
               onClick={useLocalMode}
-              className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg"
+              className="game-button-success px-4 py-2 text-sm font-medium flex items-center justify-center gap-1"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
             >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+              </svg>
               Play Offline (Local Dictionary)
-            </button>
+            </motion.button>
 
-            <Link href="/leaderboard" className="px-4 py-2 bg-indigo-500 text-white text-sm font-semibold rounded-lg inline-flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+            <Link href="/leaderboard" className="game-button-accent px-4 py-2 text-sm font-medium inline-flex items-center justify-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
               </svg>
               View Leaderboard
@@ -585,66 +716,80 @@ export default function Game() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-md mb-6">
+          <div className="game-board">
             {/* Display the selected letters */}
-            <div className="bg-indigo-50 p-4 rounded-lg min-h-16 flex items-center justify-center mb-6 border-2 border-indigo-100">
+            <div className="word-display">
               {selectedLetters.length > 0 ? (
-                <p className="text-3xl font-bold tracking-wider text-indigo-800">
+                <motion.p
+                  className="text-3xl font-bold tracking-wider text-game-primary dark:text-indigo-300"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
                   {selectedLetters.map(item => item.letter.toUpperCase()).join('')}
-                </p>
+                </motion.p>
               ) : (
-                <p className="text-gray-500">Select letters to form a word</p>
+                <p className="text-game-text-light dark:text-gray-400">Select letters to form a word</p>
               )}
             </div>
 
             {/* Display the letters user can choose from */}
-            <div className={`grid ${boardSize === 10 ? 'grid-cols-5' : boardSize === 15 ? 'grid-cols-5' : 'grid-cols-5'} gap-2 mb-6 max-h-96 overflow-y-auto p-2`}>
+            <div className={`grid ${boardSize === 10 ? 'grid-cols-5' : boardSize === 15 ? 'grid-cols-5' : 'grid-cols-5'} gap-3 mb-6 max-h-96 overflow-y-auto p-2`}>
               {letters.map((letter, index) => (
-                <button
+                <motion.button
                   key={index}
                   onClick={() => selectLetter(letter, index)}
                   disabled={isLetterSelected(index) || loading}
-                  className={`${boardSize === 25 ? 'w-12 h-12 text-lg' : boardSize === 15 ? 'w-14 h-14 text-xl' : 'w-16 h-16 text-2xl'} font-bold rounded-lg transform transition-all duration-150 ${
+                  className={`${boardSize === 25 ? 'w-12 h-12 text-lg' : boardSize === 15 ? 'w-14 h-14 text-xl' : 'w-16 h-16 text-2xl'} font-bold rounded-xl transform transition-all duration-200 ${
                     isLetterSelected(index)
-                      ? 'bg-gray-300 text-gray-500 scale-90'
-                      : 'bg-indigo-500 text-white hover:bg-indigo-600 hover:scale-105 shadow-md'
+                      ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 scale-90'
+                      : 'bg-game-primary text-white hover:bg-indigo-600 hover:scale-105 shadow-game'
                   }`}
+                  whileHover={{ scale: isLetterSelected(index) ? 0.9 : 1.05 }}
+                  whileTap={{ scale: isLetterSelected(index) ? 0.9 : 0.95 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: isLetterSelected(index) ? 0.9 : 1 }}
+                  transition={{ duration: 0.2, delay: index * 0.03 }}
                 >
                   {letter.toUpperCase()}
-                </button>
+                </motion.button>
               ))}
             </div>
 
             {/* Action buttons */}
             <div className="flex justify-between gap-4">
-              <button
+              <motion.button
                 onClick={clearSelection}
                 disabled={loading || selectedLetters.length === 0}
-                className={`flex-1 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center ${
+                className={`flex-1 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center ${
                   selectedLetters.length === 0
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-gray-300 text-gray-800 hover:bg-gray-400'
+                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    : 'bg-gray-200 dark:bg-gray-700 text-game-text dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-game'
                 }`}
+                whileHover={{ scale: selectedLetters.length === 0 ? 1 : 1.03 }}
+                whileTap={{ scale: selectedLetters.length === 0 ? 1 : 0.97 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
                 Clear
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={submitWord}
                 disabled={loading || selectedLetters.length < 3}
-                className={`flex-1 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center ${
+                className={`flex-1 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center ${
                   selectedLetters.length < 3
-                    ? 'bg-green-300 text-green-100 cursor-not-allowed'
-                    : 'bg-green-500 text-white hover:bg-green-600 shadow-md'
+                    ? 'bg-game-success/50 text-white/70 cursor-not-allowed'
+                    : 'bg-game-success text-white hover:bg-green-600 shadow-game'
                 }`}
+                whileHover={{ scale: selectedLetters.length < 3 ? 1 : 1.03 }}
+                whileTap={{ scale: selectedLetters.length < 3 ? 1 : 0.97 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
                 {loading ? 'Checking...' : 'Submit'}
-              </button>
+              </motion.button>
             </div>
           </div>
 
