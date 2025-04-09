@@ -12,9 +12,28 @@ export default function Game() {
   const [timer, setTimer] = useState(60);
   const [gameActive, setGameActive] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [apiUrl, setApiUrl] = useState('');
 
-  // Define the API base URL - default to localhost if not set
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+  // Detect and set appropriate API URL for the environment
+  useEffect(() => {
+    const detectApiUrl = () => {
+      // Default API URL
+      let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      
+      // Check if we're in a GitHub Codespace
+      if (typeof window !== 'undefined' && window.location.hostname.includes('.app.github.dev')) {
+        // Extract the codespace name and create a URL with the proper port for the backend
+        const hostname = window.location.hostname;
+        const codespacePrefix = hostname.split('.')[0];
+        url = `https://${codespacePrefix}-5000.app.github.dev/api`;
+      }
+      
+      console.log('API URL set to:', url);
+      setApiUrl(url);
+    };
+    
+    detectApiUrl();
+  }, []);
 
   // Generate random letters locally
   const generateLetters = () => {
@@ -67,12 +86,34 @@ export default function Game() {
     'long', 'look', 'lord', 'lose', 'loss', 'lost', 'love', 'luck'
   ]);
 
+  // Test CORS setup
+  const testApiConnection = async () => {
+    try {
+      if (!apiUrl) {
+        console.log('API URL not set yet');
+        return;
+      }
+      
+      console.log('Testing API connection to:', apiUrl);
+      const response = await axios.get(`${apiUrl.replace('/api', '')}/cors-test`);
+      console.log('CORS test successful:', response.data);
+      return true;
+    } catch (error) {
+      console.error('CORS test failed:', error);
+      return false;
+    }
+  };
+
   // Function to check if a word is valid by calling the API
   const validateWordWithAPI = async (word, letters) => {
     try {
+      if (!apiUrl) {
+        throw new Error('API URL not set');
+      }
+      
       setLoading(true);
       // Try to validate using the API
-      const response = await axios.post(`${API_BASE_URL}/game/validate`, { 
+      const response = await axios.post(`${apiUrl}/game/validate`, { 
         word, 
         letters 
       });
@@ -119,19 +160,26 @@ export default function Game() {
   // Start a new game
   const startGame = async () => {
     try {
+      // Test API connection before starting game
+      await testApiConnection();
+      
       setLoading(true);
       let newLetters;
       
       // Try to get letters from the API
-      try {
-        const response = await axios.get(`${API_BASE_URL}/game/letters`);
-        if (response.data && response.data.success && response.data.letters) {
-          newLetters = response.data.letters;
-        } else {
+      if (apiUrl) {
+        try {
+          const response = await axios.get(`${apiUrl}/game/letters`);
+          if (response.data && response.data.success && response.data.letters) {
+            newLetters = response.data.letters;
+          } else {
+            newLetters = generateLetters();
+          }
+        } catch (error) {
+          console.log('Error getting letters from API:', error);
           newLetters = generateLetters();
         }
-      } catch (error) {
-        console.log('Error getting letters from API:', error);
+      } else {
         newLetters = generateLetters();
       }
       
@@ -257,13 +305,20 @@ export default function Game() {
       )}
       
       {!gameActive && timer === 60 && (
-        <button 
-          onClick={startGame}
-          className="px-8 py-3 bg-indigo-600 text-white text-xl font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
-          disabled={loading}
-        >
-          {loading ? 'Loading...' : 'Start Game'}
-        </button>
+        <div className="text-center">
+          <button 
+            onClick={startGame}
+            className="px-8 py-3 bg-indigo-600 text-white text-xl font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'Start Game'}
+          </button>
+          
+          {/* Display API connection status */}
+          <p className="mt-2 text-sm text-gray-600">
+            {apiUrl ? `API: ${apiUrl}` : 'API not configured yet'}
+          </p>
+        </div>
       )}
       
       {gameActive && (
