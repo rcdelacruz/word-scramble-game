@@ -11,7 +11,9 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "prepare": "cd apps/backend && npm run fetch-dictionary"
+    "prepare": "cd apps/backend && node scripts/fetchDictionary.js",
+    "dictionary": "cd apps/backend && node scripts/fetchDictionary.js",
+    "postinstall": "cd apps/backend && node scripts/fetchDictionary.js"
   },
   "devDependencies": {
     "eslint": "^8.53.0",
