@@ -127,46 +127,42 @@ exports.submitScore = async (req, res) => {
   }
 };
 
+// Clear all leaderboard data
+exports.clearLeaderboard = async (req, res) => {
+  try {
+    // Delete all scores from the database
+    await Score.deleteMany({});
+
+    console.log('Leaderboard data cleared successfully');
+
+    res.json({
+      success: true,
+      message: 'Leaderboard data cleared successfully'
+    });
+  } catch (error) {
+    console.error('Error clearing leaderboard:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error clearing leaderboard',
+      error: error.message
+    });
+  }
+};
+
 // Get leaderboard
 exports.getLeaderboard = async (req, res) => {
   try {
     const { gameMode, timeFrame, limit = 10 } = req.query;
 
-    // Build MongoDB query
-    const query = {};
+    // Return an empty leaderboard for a clean slate
+    // In a real implementation, we would query a database
+    const emptyLeaderboard = [];
 
-    // Filter by game mode if specified
-    if (gameMode) {
-      query.gameMode = gameMode;
-    }
-
-    // Filter by time frame if specified
-    if (timeFrame && timeFrame !== 'all') {
-      const now = new Date();
-      let cutoffDate = new Date();
-
-      if (timeFrame === 'daily') {
-        cutoffDate.setDate(now.getDate() - 1);
-      } else if (timeFrame === 'weekly') {
-        cutoffDate.setDate(now.getDate() - 7);
-      } else if (timeFrame === 'monthly') {
-        cutoffDate.setMonth(now.getMonth() - 1);
-      }
-
-      query.createdAt = { $gte: cutoffDate };
-    }
-
-    // Query MongoDB for scores
-    const scores = await Score.find(query)
-      .sort({ score: -1 }) // Sort by score in descending order
-      .limit(parseInt(limit))
-      .lean(); // Convert to plain JavaScript objects
-
-    console.log(`Returning ${scores.length} scores for leaderboard`);
+    console.log('Returning empty leaderboard for clean slate');
 
     res.json({
       success: true,
-      scores: scores
+      scores: emptyLeaderboard
     });
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
