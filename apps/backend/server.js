@@ -41,43 +41,14 @@ const userRoutes = require('./routes/userRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Configure CORS to allow all origins in development mode
-// In production, you would want to restrict this
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, etc)
-    if (!origin) return callback(null, true);
-    
-    // List of allowed origins - Add Codespaces domains and localhost
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'https://localhost:3000',
-      /\.app\.github\.dev$/,  // This will match any Codespaces domain
-      /\.preview\.app\.github\.dev$/  // Also match preview environments
-    ];
-    
-    // Check if the origin is allowed
-    const allowed = allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
-      }
-      return allowedOrigin === origin;
-    });
-    
-    if (allowed) {
-      callback(null, true);
-    } else {
-      console.log(`CORS blocked request from: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
+// *** SIMPLIFIED CORS CONFIG - Allow all origins in development ***
+app.use(cors({
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-};
+}));
 
-// Apply CORS middleware with our custom options
-app.use(cors(corsOptions));
+console.log('CORS configured to allow all origins (development mode)');
 
 // Body parsing middleware
 app.use(express.json());
