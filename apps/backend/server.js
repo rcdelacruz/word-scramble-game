@@ -41,8 +41,45 @@ const userRoutes = require('./routes/userRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// Configure CORS to allow all origins in development mode
+// In production, you would want to restrict this
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    
+    // List of allowed origins - Add Codespaces domains and localhost
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://localhost:3000',
+      /\.app\.github\.dev$/,  // This will match any Codespaces domain
+      /\.preview\.app\.github\.dev$/  // Also match preview environments
+    ];
+    
+    // Check if the origin is allowed
+    const allowed = allowedOrigins.some(allowedOrigin => {
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return allowedOrigin === origin;
+    });
+    
+    if (allowed) {
+      callback(null, true);
+    } else {
+      console.log(`CORS blocked request from: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// Apply CORS middleware with our custom options
+app.use(cors(corsOptions));
+
+// Body parsing middleware
 app.use(express.json());
 
 // Log all environment variables (for debugging) - redacted for security
@@ -77,6 +114,15 @@ app.use('/api/users', userRoutes);
 // Basic health check endpoint
 app.get('/', (req, res) => {
   res.send('Word Scramble Game API is running');
+});
+
+// CORS test endpoint
+app.get('/cors-test', (req, res) => {
+  res.json({
+    message: 'CORS is working properly!',
+    origin: req.headers.origin || 'No origin header',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Debug route to check environment variables
