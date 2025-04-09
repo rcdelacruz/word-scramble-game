@@ -4,22 +4,35 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 
-// Load environment variables with priority for custom .env file
-const envPath = path.resolve(process.cwd(), '.env');
-const defaultEnvPath = path.resolve(__dirname, '.env');
+// More comprehensive .env file detection
+const possibleEnvPaths = [
+  path.resolve(process.cwd(), '.env'),                    // Root of where the command is run
+  path.resolve(__dirname, '.env'),                        // Backend directory
+  path.resolve(__dirname, '..', '..', '.env'),            // Project root in monorepo
+  path.resolve(__dirname, '..', '.env'),                  // Apps directory
+  path.resolve(process.cwd(), 'apps/backend/.env'),       // In case running from workspace root
+  path.resolve(process.cwd(), '../../../.env')            // In case running from nested workspace
+];
 
-// Try to load from current working directory first (for monorepo setup),
-// then from the backend directory directly
-if (fs.existsSync(envPath)) {
-  console.log(`Loading .env file from: ${envPath}`);
-  require('dotenv').config({ path: envPath });
-} else if (fs.existsSync(defaultEnvPath)) {
-  console.log(`Loading .env file from: ${defaultEnvPath}`);
-  require('dotenv').config({ path: defaultEnvPath });
-} else {
-  console.log('No .env file found, using default environment variables');
+// Try to find and load a .env file
+let envLoaded = false;
+for (const envPath of possibleEnvPaths) {
+  if (fs.existsSync(envPath)) {
+    console.log(`Found and loading .env file from: ${envPath}`);
+    require('dotenv').config({ path: envPath });
+    envLoaded = true;
+    break;
+  }
+}
+
+if (!envLoaded) {
+  console.log('No .env file found in any expected location. Using default environment variables.');
   require('dotenv').config();
 }
+
+// Print all possible env paths that were checked (for debugging)
+console.log('Checked the following paths for .env files:');
+possibleEnvPaths.forEach(p => console.log(`- ${p} (${fs.existsSync(p) ? 'EXISTS' : 'NOT FOUND'})`));
 
 // Import routes
 const gameRoutes = require('./routes/gameRoutes');
@@ -31,6 +44,13 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Log all environment variables (for debugging) - redacted for security
+console.log('Environment variables loaded:');
+console.log(`- PORT: ${process.env.PORT || '(not set, using default 5000)'}`);
+console.log(`- NODE_ENV: ${process.env.NODE_ENV || '(not set)'}`);
+console.log(`- MONGODB_URI: ${process.env.MONGODB_URI ? '(set)' : '(not set, will use default)'}`);
+console.log(`- JWT_SECRET: ${process.env.JWT_SECRET ? '(set)' : '(not set)'}`);
 
 // Database connection
 const connectDB = async () => {
@@ -66,10 +86,10 @@ app.get('/debug/env', (req, res) => {
     mongoDbUri: process.env.MONGODB_URI ? 'Set (value hidden)' : 'Not set',
     nodeEnv: process.env.NODE_ENV || 'Not set',
     currentDirectory: process.cwd(),
-    envFiles: {
-      rootEnvExists: fs.existsSync(envPath),
-      backendEnvExists: fs.existsSync(defaultEnvPath)
-    }
+    envFiles: possibleEnvPaths.reduce((acc, path) => {
+      acc[path] = fs.existsSync(path);
+      return acc;
+    }, {})
   });
 });
 
