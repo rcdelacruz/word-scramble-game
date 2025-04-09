@@ -33,7 +33,9 @@ yarn-error.log*
 .turbo
 
 # Dictionary files
-apps/backend/src/data/
+apps/backend/data/
+**/data/*.txt
+**/dictionary*.txt
 
 # vercel
 .vercel
