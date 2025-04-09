@@ -81,6 +81,7 @@ export default function Leaderboard() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Player</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -112,12 +113,15 @@ export default function Leaderboard() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
                       {entry.score}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {entry.boardSize || 8} Letters
+                    </td>
                   </tr>
                 ))}
 
                 {leaderboardData.length === 0 && (
                   <tr>
-                    <td colSpan="3" className="px-6 py-10 text-center text-gray-500">
+                    <td colSpan="4" className="px-6 py-10 text-center text-gray-500">
                       No scores available for this time period
                     </td>
                   </tr>

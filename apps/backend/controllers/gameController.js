@@ -6,7 +6,12 @@ const Score = require('../models/Score');
 exports.getLetterSet = (req, res) => {
   try {
     const difficulty = req.query.difficulty || 'medium';
-    const letters = wordUtils.generateLetterSet(difficulty);
+    const size = parseInt(req.query.size) || 8;
+
+    // Validate board size
+    const validSize = [6, 8, 10].includes(size) ? size : 8;
+
+    const letters = wordUtils.generateLetterSet(difficulty, validSize);
 
     // Find possible words that can be formed with these letters
     const possibleWords = dictionaryCheck.getPossibleWords(letters);
@@ -14,7 +19,8 @@ exports.getLetterSet = (req, res) => {
     res.json({
       success: true,
       letters,
-      possibleWords: possibleWords.length
+      possibleWords: possibleWords.length,
+      boardSize: validSize
     });
   } catch (error) {
     console.error('Error generating letter set:', error);
@@ -96,7 +102,9 @@ exports.submitScore = async (req, res) => {
       username: username.trim(),
       score: score,
       wordsFound: wordsFound || [],
-      gameMode: gameMode || 'classic'
+      gameMode: gameMode || 'classic',
+      boardSize: req.body.boardSize || 8,
+      difficulty: req.body.difficulty || 'medium'
     });
 
     // Save to MongoDB

@@ -15,6 +15,7 @@ export default function Game() {
   const [loading, setLoading] = useState(false);
   const [apiUrl, setApiUrl] = useState('');
   const [difficulty, setDifficulty] = useState('medium'); // 'easy', 'medium', 'hard'
+  const [boardSize, setBoardSize] = useState(8); // 6, 8, or 10 letters
   const [username, setUsername] = useState('');
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
 
@@ -31,40 +32,40 @@ export default function Game() {
     }
   }, []);
 
-  // Generate random letters locally based on difficulty
-  const generateLetters = (difficultyLevel = 'medium') => {
+  // Generate random letters locally based on difficulty and board size
+  const generateLetters = (difficultyLevel = 'medium', size = 8) => {
     // Different letter distributions based on difficulty
     const letterSets = {
       easy: {
         vowels: 'aeioua', // Duplicate common vowels
         consonants: 'rstlnbcdfghjkmpqvwxyz', // Common consonants first
-        vowelCount: 3,
         vowelBias: 0.4 // Higher chance of vowels
       },
       medium: {
         vowels: 'aeiou',
         consonants: 'bcdfghjklmnpqrstvwxyz',
-        vowelCount: 2,
         vowelBias: 0.3
       },
       hard: {
         vowels: 'aeiou',
         consonants: 'jkqvwxzbcdfghlmnprst', // Less common consonants first
-        vowelCount: 2,
         vowelBias: 0.2 // Lower chance of vowels
       }
     };
 
-    const { vowels, consonants, vowelCount, vowelBias } = letterSets[difficultyLevel] || letterSets.medium;
+    const { vowels, consonants, vowelBias } = letterSets[difficultyLevel] || letterSets.medium;
     const newLetters = [];
 
-    // Ensure we have minimum number of vowels based on difficulty
+    // Calculate vowel count based on board size
+    const vowelCount = Math.max(2, Math.floor(size * (difficultyLevel === 'easy' ? 0.4 : 0.3)));
+
+    // Ensure we have minimum number of vowels based on difficulty and board size
     for (let i = 0; i < vowelCount; i++) {
       newLetters.push(vowels[Math.floor(Math.random() * vowels.length)]);
     }
 
     // Fill the rest with a mix, with bias based on difficulty
-    for (let i = 0; i < (8 - vowelCount); i++) {
+    for (let i = 0; i < (size - vowelCount); i++) {
       const letterSet = Math.random() < vowelBias ? vowels : consonants;
       newLetters.push(letterSet[Math.floor(Math.random() * letterSet.length)]);
     }
@@ -172,19 +173,19 @@ export default function Game() {
       // Try to get letters from the API
       if (apiUrl) {
         try {
-          console.log('Fetching letters from API:', `${apiUrl}/game/letters?difficulty=${difficulty}`);
-          const response = await axios.get(`${apiUrl}/game/letters?difficulty=${difficulty}`);
+          console.log('Fetching letters from API:', `${apiUrl}/game/letters?difficulty=${difficulty}&size=${boardSize}`);
+          const response = await axios.get(`${apiUrl}/game/letters?difficulty=${difficulty}&size=${boardSize}`);
           if (response.data && response.data.success && response.data.letters) {
             newLetters = response.data.letters;
           } else {
-            newLetters = generateLetters(difficulty);
+            newLetters = generateLetters(difficulty, boardSize);
           }
         } catch (error) {
           console.log('Error getting letters from API:', error);
-          newLetters = generateLetters(difficulty);
+          newLetters = generateLetters(difficulty, boardSize);
         }
       } else {
-        newLetters = generateLetters(difficulty);
+        newLetters = generateLetters(difficulty, boardSize);
       }
 
       setLetters(newLetters);
@@ -200,7 +201,7 @@ export default function Game() {
       setLoading(false);
 
       // Fallback to generate letters locally
-      const newLetters = generateLetters(difficulty);
+      const newLetters = generateLetters(difficulty, boardSize);
       setLetters(newLetters);
       setSelectedLetters([]);
       setScore(0);
@@ -303,7 +304,9 @@ export default function Game() {
         username: username.trim(),
         score,
         wordsFound: usedWords,
-        gameMode: 'classic'
+        gameMode: 'classic',
+        boardSize: boardSize,
+        difficulty: difficulty
       };
 
       if (apiUrl) {
@@ -489,30 +492,53 @@ export default function Game() {
           <div className="bg-white p-6 rounded-xl shadow-md w-full max-w-md mb-6 text-left">
             <h2 className="text-xl font-bold text-indigo-700 mb-3">How to Play:</h2>
             <ol className="list-decimal pl-5 space-y-2 text-gray-700">
-              <li>You'll get 8 random letters</li>
-              <li>Form words using these letters</li>
+              <li>Choose your board size (6, 8, or 10 letters)</li>
+              <li>Form words using the given letters</li>
               <li>Words must be at least 3 letters long</li>
               <li>Longer words earn more points!</li>
               <li>You have 60 seconds - find as many words as you can</li>
+              <li>More letters = more possible words and higher scores!</li>
             </ol>
           </div>
 
-          {/* Difficulty selector */}
-          <div className="mb-6">
-            <p className="text-gray-700 mb-2">Select Difficulty:</p>
-            <div className="flex justify-center space-x-2">
-              {['easy', 'medium', 'hard'].map((level) => (
-                <button
-                  key={level}
-                  onClick={() => setDifficulty(level)}
-                  className={`px-4 py-2 rounded-lg font-semibold transition-colors ${difficulty === level
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                >
-                  {level.charAt(0).toUpperCase() + level.slice(1)}
-                </button>
-              ))}
+          {/* Game settings */}
+          <div className="mb-6 space-y-4">
+            {/* Difficulty selector */}
+            <div>
+              <p className="text-gray-700 mb-2">Select Difficulty:</p>
+              <div className="flex justify-center space-x-2">
+                {['easy', 'medium', 'hard'].map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => setDifficulty(level)}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${difficulty === level
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                  >
+                    {level.charAt(0).toUpperCase() + level.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Board size selector */}
+            <div>
+              <p className="text-gray-700 mb-2">Board Size:</p>
+              <div className="flex justify-center space-x-2">
+                {[6, 8, 10].map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setBoardSize(size)}
+                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${boardSize === size
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                  >
+                    {size} Letters
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -572,13 +598,13 @@ export default function Game() {
             </div>
 
             {/* Display the letters user can choose from */}
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className={`grid ${boardSize === 6 ? 'grid-cols-3' : boardSize === 8 ? 'grid-cols-4' : 'grid-cols-5'} gap-3 mb-6`}>
               {letters.map((letter, index) => (
                 <button
                   key={index}
                   onClick={() => selectLetter(letter, index)}
                   disabled={isLetterSelected(index) || loading}
-                  className={`w-16 h-16 text-2xl font-bold rounded-lg transform transition-all duration-150 ${
+                  className={`${boardSize === 10 ? 'w-14 h-14 text-xl' : 'w-16 h-16 text-2xl'} font-bold rounded-lg transform transition-all duration-150 ${
                     isLetterSelected(index)
                       ? 'bg-gray-300 text-gray-500 scale-90'
                       : 'bg-indigo-500 text-white hover:bg-indigo-600 hover:scale-105 shadow-md'
