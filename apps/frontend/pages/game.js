@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import axios from 'axios';
 
 export default function Game() {
   const [letters, setLetters] = useState([]);
@@ -10,16 +11,12 @@ export default function Game() {
   const [usedWords, setUsedWords] = useState([]);
   const [timer, setTimer] = useState(60);
   const [gameActive, setGameActive] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Simple dictionary for word validation (in a real app we'd use the API)
-  const dictionary = new Set([
-    'cat', 'bat', 'rat', 'hat', 'mat', 'sat', 'pat', 'chat', 'that', 
-    'flat', 'brat', 'spat', 'stat', 'scat', 'splat', 'combat',
-    'dog', 'log', 'fog', 'bog', 'cog', 'jog', 'frog', 'smog', 'blog',
-    'word', 'game', 'play', 'time', 'fun', 'high', 'score', 'level'
-  ]);
+  // Define the API base URL - default to localhost if not set
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-  // Generate random letters
+  // Generate random letters locally
   const generateLetters = () => {
     const vowels = 'aeiou';
     const consonants = 'bcdfghjklmnpqrstvwxyz';
@@ -40,15 +37,126 @@ export default function Game() {
     return newLetters.sort(() => Math.random() - 0.5);
   };
 
+  // Fallback dictionary for offline play
+  const fallbackDictionary = new Set([
+    'cat', 'bat', 'rat', 'hat', 'mat', 'sat', 'pat', 'chat', 'that', 
+    'flat', 'brat', 'spat', 'stat', 'scat', 'splat', 'combat',
+    'dog', 'log', 'fog', 'bog', 'cog', 'jog', 'frog', 'smog', 'blog',
+    'word', 'game', 'play', 'time', 'fun', 'high', 'score', 'level',
+    'act', 'add', 'age', 'ago', 'aid', 'aim', 'air', 'all', 'and', 'any',
+    'arm', 'art', 'ask', 'bad', 'bag', 'ban', 'bar', 'bed', 'bet', 'bid',
+    'big', 'bit', 'box', 'boy', 'bug', 'bus', 'but', 'buy', 'can', 'cap',
+    'car', 'cat', 'cop', 'cow', 'cry', 'cup', 'cut', 'dad', 'day', 'die',
+    'dig', 'dim', 'dip', 'dirt', 'dish', 'dock', 'does', 'dog', 'door',
+    'down', 'drag', 'draw', 'drop', 'dry', 'due', 'dull', 'dust', 'duty',
+    'each', 'earn', 'ease', 'east', 'easy', 'eat', 'edge', 'else', 'even',
+    'ever', 'evil', 'exit', 'face', 'fact', 'fail', 'fair', 'fall', 'farm',
+    'fast', 'fate', 'fear', 'feed', 'feel', 'feet', 'fell', 'felt', 'file',
+    'fill', 'film', 'find', 'fine', 'fire', 'firm', 'fish', 'five', 'flat',
+    'flow', 'food', 'foot', 'form', 'four', 'free', 'from', 'fuel', 'full',
+    'fund', 'gain', 'game', 'gate', 'gave', 'gear', 'gene', 'gift', 'girl',
+    'give', 'glad', 'goal', 'goes', 'gold', 'golf', 'gone', 'good', 'grew',
+    'grow', 'hair', 'half', 'hall', 'hand', 'hang', 'hard', 'harm', 'hate',
+    'have', 'head', 'hear', 'heat', 'held', 'hell', 'help', 'here', 'hero',
+    'hide', 'high', 'hill', 'hire', 'hold', 'hole', 'holy', 'home', 'hope',
+    'host', 'hour', 'huge', 'hung', 'hunt', 'hurt', 'idea', 'inch', 'into',
+    'iron', 'item', 'join', 'joke', 'jump', 'jury', 'just', 'keen', 'keep',
+    'kick', 'kill', 'kind', 'king', 'knew', 'know', 'lack', 'lady', 'laid',
+    'lake', 'land', 'lane', 'last', 'late', 'lead', 'left', 'less', 'life',
+    'lift', 'like', 'line', 'link', 'list', 'live', 'load', 'loan', 'lock',
+    'long', 'look', 'lord', 'lose', 'loss', 'lost', 'love', 'luck'
+  ]);
+
+  // Function to check if a word is valid by calling the API
+  const validateWordWithAPI = async (word, letters) => {
+    try {
+      setLoading(true);
+      // Try to validate using the API
+      const response = await axios.post(`${API_BASE_URL}/game/validate`, { 
+        word, 
+        letters 
+      });
+      
+      setLoading(false);
+      
+      if (response.data && response.data.success) {
+        return {
+          isValid: response.data.isValid,
+          score: response.data.score
+        };
+      }
+      throw new Error('API validation failed');
+    } catch (error) {
+      console.log('Error validating word with API:', error);
+      setLoading(false);
+      
+      // Fallback to local dictionary
+      console.log('Falling back to local dictionary');
+      return {
+        isValid: fallbackDictionary.has(word.toLowerCase()),
+        score: calculateLocalScore(word)
+      };
+    }
+  };
+  
+  // Calculate score locally (fallback)
+  const calculateLocalScore = (word) => {
+    if (!word) return 0;
+    
+    const length = word.length;
+    
+    // Base score: 1 point per letter
+    let score = length;
+    
+    // Bonus points for longer words
+    if (length >= 4) score += (length - 3) * 2;
+    if (length >= 6) score += 5; // Extra bonus for 6+ letter words
+    if (length >= 8) score += 10; // Extra bonus for 8+ letter words
+    
+    return score;
+  };
+
   // Start a new game
-  const startGame = () => {
-    setLetters(generateLetters());
-    setSelectedLetters([]);
-    setScore(0);
-    setMessage('');
-    setUsedWords([]);
-    setTimer(60);
-    setGameActive(true);
+  const startGame = async () => {
+    try {
+      setLoading(true);
+      let newLetters;
+      
+      // Try to get letters from the API
+      try {
+        const response = await axios.get(`${API_BASE_URL}/game/letters`);
+        if (response.data && response.data.success && response.data.letters) {
+          newLetters = response.data.letters;
+        } else {
+          newLetters = generateLetters();
+        }
+      } catch (error) {
+        console.log('Error getting letters from API:', error);
+        newLetters = generateLetters();
+      }
+      
+      setLetters(newLetters);
+      setSelectedLetters([]);
+      setScore(0);
+      setMessage('');
+      setUsedWords([]);
+      setTimer(60);
+      setGameActive(true);
+      setLoading(false);
+    } catch (error) {
+      console.log('Error starting game:', error);
+      setLoading(false);
+      
+      // Fallback to generate letters locally
+      const newLetters = generateLetters();
+      setLetters(newLetters);
+      setSelectedLetters([]);
+      setScore(0);
+      setMessage('');
+      setUsedWords([]);
+      setTimer(60);
+      setGameActive(true);
+    }
   };
 
   // Handle timer
@@ -76,27 +184,41 @@ export default function Game() {
   };
 
   // Submit word
-  const submitWord = () => {
+  const submitWord = async () => {
     if (!gameActive || selectedLetters.length === 0) return;
     
     const word = selectedLetters.map(item => item.letter).join('');
     
-    // Check if word exists and hasn't been used yet
-    if (dictionary.has(word) && !usedWords.includes(word)) {
-      // Calculate score - 1 point per letter, bonus for longer words
-      let wordScore = word.length;
-      if (word.length > 3) wordScore += (word.length - 3) * 2;
-      
-      setScore(score + wordScore);
-      setUsedWords([...usedWords, word]);
-      setMessage(`Nice! +${wordScore} points.`);
-      
-      // Reset selected letters but keep the same available letters
-      setSelectedLetters([]);
-    } else if (usedWords.includes(word)) {
+    // Check if word has already been used
+    if (usedWords.includes(word)) {
       setMessage('You already used that word!');
-    } else {
-      setMessage('Not a valid word.');
+      return;
+    }
+    
+    // Word must be at least 3 letters
+    if (word.length < 3) {
+      setMessage('Words must be at least 3 letters long.');
+      return;
+    }
+    
+    try {
+      // Validate word with API (or fallback)
+      const validation = await validateWordWithAPI(word, letters);
+      
+      if (validation.isValid) {
+        // Valid word - add score and display message
+        setScore(score + validation.score);
+        setUsedWords([...usedWords, word]);
+        setMessage(`Nice! +${validation.score} points.`);
+        
+        // Reset selected letters but keep the same available letters
+        setSelectedLetters([]);
+      } else {
+        setMessage('Not a valid word.');
+      }
+    } catch (error) {
+      console.log('Error submitting word:', error);
+      setMessage('Error checking word. Try again.');
     }
   };
 
@@ -127,8 +249,9 @@ export default function Game() {
           <button 
             onClick={startGame}
             className="mt-4 px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+            disabled={loading}
           >
-            Play Again
+            {loading ? 'Loading...' : 'Play Again'}
           </button>
         </div>
       )}
@@ -137,8 +260,9 @@ export default function Game() {
         <button 
           onClick={startGame}
           className="px-8 py-3 bg-indigo-600 text-white text-xl font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+          disabled={loading}
         >
-          Start Game
+          {loading ? 'Loading...' : 'Start Game'}
         </button>
       )}
       
@@ -156,7 +280,7 @@ export default function Game() {
                 <button
                   key={index}
                   onClick={() => selectLetter(letter, index)}
-                  disabled={isLetterSelected(index)}
+                  disabled={isLetterSelected(index) || loading}
                   className={`w-16 h-16 text-2xl font-bold rounded-lg ${
                     isLetterSelected(index)
                       ? 'bg-gray-300 text-gray-500'
@@ -183,15 +307,17 @@ export default function Game() {
             <div className="flex justify-between gap-4">
               <button
                 onClick={clearSelection}
+                disabled={loading}
                 className="flex-1 py-2 bg-gray-300 text-gray-800 font-semibold rounded hover:bg-gray-400 transition-colors"
               >
                 Clear
               </button>
               <button
                 onClick={submitWord}
+                disabled={loading}
                 className="flex-1 py-2 bg-green-500 text-white font-semibold rounded hover:bg-green-600 transition-colors"
               >
-                Submit
+                {loading ? 'Checking...' : 'Submit'}
               </button>
             </div>
           </div>
