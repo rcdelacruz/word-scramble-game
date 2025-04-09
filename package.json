@@ -13,7 +13,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "prepare": "cd apps/backend && node scripts/fetchDictionary.js",
     "dictionary": "cd apps/backend && node scripts/fetchDictionary.js",
-    "postinstall": "cd apps/backend && node scripts/fetchDictionary.js"
+    "postinstall": "cd apps/backend && node scripts/fetchDictionary.js && npx next telemetry disable",
+    "disable-telemetry": "npx turbo telemetry disable && npx next telemetry disable"
   },
   "devDependencies": {
     "eslint": "^8.53.0",
