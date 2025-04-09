@@ -14,25 +14,17 @@ export default function Game() {
   const [loading, setLoading] = useState(false);
   const [apiUrl, setApiUrl] = useState('');
 
-  // Detect and set appropriate API URL for the environment
+  // Use hardcoded API URL - directly from environment variable
   useEffect(() => {
-    const detectApiUrl = () => {
-      // Default API URL
-      let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      
-      // Check if we're in a GitHub Codespace
-      if (typeof window !== 'undefined' && window.location.hostname.includes('.app.github.dev')) {
-        // Extract the codespace name and create a URL with the proper port for the backend
-        const hostname = window.location.hostname;
-        const codespacePrefix = hostname.split('.')[0];
-        url = `https://${codespacePrefix}-5000.app.github.dev/api`;
-      }
-      
-      console.log('API URL set to:', url);
-      setApiUrl(url);
-    };
+    // Use the environment variable from .env file
+    const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    console.log('Using API URL from environment:', url);
+    setApiUrl(url);
     
-    detectApiUrl();
+    // Log debug information
+    if (typeof window !== 'undefined') {
+      console.log('Current frontend URL:', window.location.href);
+    }
   }, []);
 
   // Generate random letters locally
@@ -85,24 +77,6 @@ export default function Game() {
     'lift', 'like', 'line', 'link', 'list', 'live', 'load', 'loan', 'lock',
     'long', 'look', 'lord', 'lose', 'loss', 'lost', 'love', 'luck'
   ]);
-
-  // Test CORS setup
-  const testApiConnection = async () => {
-    try {
-      if (!apiUrl) {
-        console.log('API URL not set yet');
-        return;
-      }
-      
-      console.log('Testing API connection to:', apiUrl);
-      const response = await axios.get(`${apiUrl.replace('/api', '')}/cors-test`);
-      console.log('CORS test successful:', response.data);
-      return true;
-    } catch (error) {
-      console.error('CORS test failed:', error);
-      return false;
-    }
-  };
 
   // Function to check if a word is valid by calling the API
   const validateWordWithAPI = async (word, letters) => {
@@ -160,15 +134,13 @@ export default function Game() {
   // Start a new game
   const startGame = async () => {
     try {
-      // Test API connection before starting game
-      await testApiConnection();
-      
       setLoading(true);
       let newLetters;
       
       // Try to get letters from the API
       if (apiUrl) {
         try {
+          console.log('Fetching letters from API:', `${apiUrl}/game/letters`);
           const response = await axios.get(`${apiUrl}/game/letters`);
           if (response.data && response.data.success && response.data.letters) {
             newLetters = response.data.letters;
@@ -280,6 +252,12 @@ export default function Game() {
     return selectedLetters.some(item => item.originalIndex === index);
   };
 
+  // Use local dictionary only mode
+  const useLocalMode = () => {
+    setApiUrl('');
+    setMessage('Using local dictionary mode - no server connection needed');
+  };
+
   return (
     <div className="flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-100 to-purple-100 min-h-screen">
       <Head>
@@ -308,16 +286,26 @@ export default function Game() {
         <div className="text-center">
           <button 
             onClick={startGame}
-            className="px-8 py-3 bg-indigo-600 text-white text-xl font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
+            className="px-8 py-3 bg-indigo-600 text-white text-xl font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors mb-4"
             disabled={loading}
           >
             {loading ? 'Loading...' : 'Start Game'}
           </button>
           
+          <div className="mb-4">
+            <button
+              onClick={useLocalMode}
+              className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg"
+            >
+              Play Offline (Local Dictionary)
+            </button>
+          </div>
+          
           {/* Display API connection status */}
-          <p className="mt-2 text-sm text-gray-600">
-            {apiUrl ? `API: ${apiUrl}` : 'API not configured yet'}
-          </p>
+          <div className="text-sm text-gray-600 border border-gray-300 p-3 rounded bg-white">
+            <p><strong>API:</strong> {apiUrl || 'Not configured'}</p>
+            <p className="mt-1 text-xs">If you see CORS errors, try playing offline mode</p>
+          </div>
         </div>
       )}
       
