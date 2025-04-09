@@ -8,8 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "eslint src/",
-    "postinstall": "node src/scripts/fetchDictionary.js",
-    "fetch-dictionary": "node src/scripts/fetchDictionary.js"
+    "postinstall": "node scripts/fetchDictionary.js",
+    "fetch-dictionary": "node scripts/fetchDictionary.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
