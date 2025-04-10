@@ -4,8 +4,8 @@
  * @module controllers/gameController
  */
 
-const wordUtils = require('../src/utils/wordGenerator');
-const dictionaryCheck = require('../src/utils/dictionaryCheck');
+const wordUtils = require('../utils/wordGenerator');
+const dictionaryCheck = require('../utils/dictionaryCheck');
 const Score = require('../models/Score');
 const { ApiError } = require('../middleware/errorMiddleware');
 const logger = require('../utils/logger');
