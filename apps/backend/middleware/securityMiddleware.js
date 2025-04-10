@@ -40,6 +40,7 @@ const corsOptions = {
       'http://localhost:3002',
       'http://localhost:3003',
       'https://word-scramble-game.vercel.app',
+      'https://word-scramble-game-backend.vercel.app',
       'https://scramble.rcdc.me',
     ];
 
