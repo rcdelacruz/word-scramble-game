@@ -3,18 +3,19 @@ import Head from 'next/head';
 import Link from 'next/link';
 
 export default function Layout({ children, title = 'Word Scramble Game' }) {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true); // Default to dark mode
 
-  // Initialize dark mode from localStorage or system preference
+  // Initialize dark mode from localStorage or use dark mode as default
   useEffect(() => {
     // Check for saved preference
     const savedMode = localStorage.getItem('darkMode');
     if (savedMode !== null) {
       setDarkMode(savedMode === 'true');
     } else {
-      // Check system preference
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setDarkMode(prefersDark);
+      // Default to dark mode
+      setDarkMode(true);
+      // Save the default preference
+      localStorage.setItem('darkMode', 'true');
     }
   }, []);
 
