@@ -1,8 +1,23 @@
+/**
+ * Game Controller
+ * Handles all game-related API endpoints
+ * @module controllers/gameController
+ */
+
 const wordUtils = require('../src/utils/wordGenerator');
 const dictionaryCheck = require('../src/utils/dictionaryCheck');
 const Score = require('../models/Score');
+const { ApiError } = require('../middleware/errorMiddleware');
+const logger = require('../utils/logger');
 
-// Generate a new set of letters for a game
+/**
+ * Generate a new set of letters for a game
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {string} [req.query.difficulty='medium'] - Difficulty level (easy, medium, hard)
+ * @param {number} [req.query.size=10] - Number of letters to generate (10, 15, 25)
+ * @returns {Object} JSON response with letters and metadata
+ */
 exports.getLetterSet = (req, res) => {
   try {
     const difficulty = req.query.difficulty || 'medium';
@@ -16,6 +31,8 @@ exports.getLetterSet = (req, res) => {
     // Find possible words that can be formed with these letters
     const possibleWords = dictionaryCheck.getPossibleWords(letters);
 
+    logger.info(`Generated letter set: difficulty=${difficulty}, size=${validSize}, possibleWords=${possibleWords.length}`);
+
     res.json({
       success: true,
       letters,
@@ -23,37 +40,38 @@ exports.getLetterSet = (req, res) => {
       boardSize: validSize
     });
   } catch (error) {
-    console.error('Error generating letter set:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error generating letter set',
-      error: error.message
-    });
+    logger.error('Error generating letter set:', error);
+    throw new ApiError(500, 'Error generating letter set');
   }
 };
 
-// Validate a word
+/**
+ * Validate a word
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Object} req.body - Request body
+ * @param {string} req.body.word - Word to validate
+ * @param {string[]} req.body.letters - Available letters
+ * @returns {Object} JSON response with validation results
+ */
 exports.validateWord = (req, res) => {
   try {
-    console.log('Validate word request received:', req.body);
+    logger.debug('Validate word request received:', req.body);
     const { word, letters } = req.body;
 
     if (!word || !letters || !Array.isArray(letters)) {
-      console.log('Invalid request: missing word or letters');
-      return res.status(400).json({
-        success: false,
-        message: 'Word and letters array are required'
-      });
+      logger.warn('Invalid request: missing word or letters');
+      throw new ApiError(400, 'Word and letters array are required');
     }
 
     // Check if word can be formed from the letters
     const canBeFormed = wordUtils.canFormWord(word, letters);
-    console.log('Can word be formed from letters?', canBeFormed);
+    logger.debug('Can word be formed from letters?', canBeFormed);
 
     // Check if word exists in dictionary
     const isValidWord = canBeFormed && dictionaryCheck.isValidWord(word);
-    console.log('Is word in dictionary?', dictionaryCheck.isValidWord(word));
-    console.log('Final validation result:', isValidWord);
+    logger.debug('Is word in dictionary?', dictionaryCheck.isValidWord(word));
+    logger.debug('Final validation result:', isValidWord);
 
     // Calculate score if valid
     const score = isValidWord ? wordUtils.calculateWordScore(word) : 0;
@@ -65,35 +83,41 @@ exports.validateWord = (req, res) => {
       score
     };
 
-    console.log('Sending response:', response);
+    logger.debug('Sending response:', response);
     res.json(response);
   } catch (error) {
-    console.error('Error validating word:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error validating word',
-      error: error.message
-    });
+    logger.error('Error validating word:', error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, 'Error validating word');
   }
 };
 
-// Submit a score
+/**
+ * Submit a score
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Object} req.body - Request body
+ * @param {string} [req.body.userId] - User ID if authenticated
+ * @param {string} req.body.username - Player username
+ * @param {number} req.body.score - Player score
+ * @param {string[]} [req.body.wordsFound=[]] - Words found during the game
+ * @param {string} [req.body.gameMode='classic'] - Game mode used
+ * @param {number} [req.body.boardSize=10] - Board size used
+ * @param {string} [req.body.difficulty='medium'] - Difficulty level
+ * @returns {Object} JSON response with the saved score
+ */
 exports.submitScore = async (req, res) => {
   try {
     const { userId, username, score, wordsFound, gameMode } = req.body;
 
     if (!score || score < 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid score is required'
-      });
+      throw new ApiError(400, 'Valid score is required');
     }
 
     if (!username || !username.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Username is required'
-      });
+      throw new ApiError(400, 'Username is required');
     }
 
     // Create a new score document
@@ -110,7 +134,7 @@ exports.submitScore = async (req, res) => {
     // Save to MongoDB
     await newScore.save();
 
-    console.log(`Score submitted for ${username}: ${score} points`);
+    logger.info(`Score submitted for ${username}: ${score} points`);
 
     res.json({
       success: true,
@@ -118,38 +142,49 @@ exports.submitScore = async (req, res) => {
       message: 'Score submitted successfully'
     });
   } catch (error) {
-    console.error('Error submitting score:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error submitting score',
-      error: error.message
-    });
+    logger.error('Error submitting score:', error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, 'Error submitting score');
   }
 };
 
-// Clear all leaderboard data
+/**
+ * Clear all leaderboard data (admin only)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} JSON response with success message
+ */
 exports.clearLeaderboard = async (req, res) => {
   try {
     // Delete all scores from the database
     await Score.deleteMany({});
 
-    console.log('Leaderboard data cleared successfully');
+    logger.info('Leaderboard data cleared successfully');
 
     res.json({
       success: true,
       message: 'Leaderboard data cleared successfully'
     });
   } catch (error) {
-    console.error('Error clearing leaderboard:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error clearing leaderboard',
-      error: error.message
-    });
+    logger.error('Error clearing leaderboard:', error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, 'Error clearing leaderboard');
   }
 };
 
-// Get leaderboard
+/**
+ * Get leaderboard data
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {string} [req.query.gameMode] - Game mode to filter by
+ * @param {string} [req.query.timeFrame='all'] - Time frame to filter by (all, daily, weekly, monthly)
+ * @param {number} [req.query.limit=10] - Maximum number of scores to return
+ * @returns {Object} JSON response with leaderboard data
+ */
 exports.getLeaderboard = async (req, res) => {
   try {
     const { gameMode, timeFrame, limit = 10 } = req.query;
@@ -184,18 +219,17 @@ exports.getLeaderboard = async (req, res) => {
       .limit(parseInt(limit))
       .lean(); // Convert to plain JavaScript objects
 
-    console.log(`Returning ${scores.length} scores for leaderboard`);
+    logger.info(`Returning ${scores.length} scores for leaderboard`);
 
     res.json({
       success: true,
       scores: scores
     });
   } catch (error) {
-    console.error('Error fetching leaderboard:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching leaderboard',
-      error: error.message
-    });
+    logger.error('Error fetching leaderboard:', error);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, 'Error fetching leaderboard');
   }
 };
