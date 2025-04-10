@@ -1,0 +1,12 @@
+{
+  "buildCommand": "cd ../.. && npm install && cd apps/backend && npm run build",
+  "outputDirectory": ".",
+  "framework": "node",
+  "ignoreCommand": "exit 0",
+  "functions": {
+    "server.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
+}
