@@ -71,20 +71,21 @@ export default function Leaderboard() {
 
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative">
-            <select
-              value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value)}
-              className="p-3 pl-4 pr-10 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-game-text dark:text-white focus:outline-none focus:ring-2 focus:ring-game-primary focus:border-transparent shadow-sm transition-colors duration-200 appearance-none"
-            >
-              <option value="all">All Time</option>
-              <option value="daily">Last 24 Hours</option>
-              <option value="weekly">This Week</option>
-              <option value="monthly">This Month</option>
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-              </svg>
+              <select
+                value={timeFilter}
+                onChange={(e) => setTimeFilter(e.target.value)}
+                className="p-3 pl-4 pr-10 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-game-text dark:text-white focus:outline-none focus:ring-2 focus:ring-game-primary focus:border-transparent shadow-sm transition-colors duration-200 appearance-none"
+              >
+                <option value="all">All Time</option>
+                <option value="daily">Last 24 Hours</option>
+                <option value="weekly">This Week</option>
+                <option value="monthly">This Month</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
             </div>
 
             <div className="relative">
