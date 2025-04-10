@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://word-scramble-game.vercel.app/api/:path*"
+    }
+  ]
+}
