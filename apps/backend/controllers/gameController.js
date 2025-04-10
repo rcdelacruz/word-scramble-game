@@ -187,7 +187,7 @@ exports.clearLeaderboard = async (req, res) => {
  */
 exports.getLeaderboard = async (req, res) => {
   try {
-    const { gameMode, timeFrame, limit = 10 } = req.query;
+    const { gameMode, timeFrame, limit = 10, boardSize } = req.query;
 
     // Build MongoDB query
     const query = {};
@@ -195,6 +195,11 @@ exports.getLeaderboard = async (req, res) => {
     // Filter by game mode if specified
     if (gameMode) {
       query.gameMode = gameMode;
+    }
+
+    // Filter by board size if specified
+    if (boardSize) {
+      query.boardSize = parseInt(boardSize);
     }
 
     // Filter by time frame if specified

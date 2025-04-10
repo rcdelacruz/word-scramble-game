@@ -131,11 +131,13 @@ export const gameService = {
   },
 
   // Get leaderboard
-  getLeaderboard: async (timeFrame = 'all', limit = 10) => {
+  getLeaderboard: async (timeFrame = 'all', limit = 10, gameMode = null, boardSize = null) => {
     try {
       const query = new URLSearchParams();
       if (timeFrame) query.append('timeFrame', timeFrame);
       if (limit) query.append('limit', limit);
+      if (gameMode) query.append('gameMode', gameMode);
+      if (boardSize) query.append('boardSize', boardSize);
 
       const response = await api.get(`/game/leaderboard?${query.toString()}`);
       return response.data;
