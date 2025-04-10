@@ -1,8 +1,8 @@
 # Word Scramble Game
 
-A fun word game built with Next.js and Node.js, organized as a Turborepo monorepo.
+A modern, engaging word game built with Next.js and Node.js, organized as a Turborepo monorepo.
 
-This project features a simple but engaging word game where players create words from a set of random letters. The game is accessible to everyone but offers enough challenge to keep it interesting.
+This project features a beautifully designed word game where players create words from a set of random letters. With its sleek dark mode interface, smooth animations, and responsive design, the game provides an immersive experience across all devices. It's accessible to everyone while offering enough challenge to keep it interesting, with features like confetti celebrations for high-scoring words and a competitive leaderboard system.
 
 ## Features
 
@@ -12,16 +12,27 @@ This project features a simple but engaging word game where players create words
 - Comprehensive English word dictionary
 - Leaderboard to track high scores
 - User accounts to save progress
-- Simple, intuitive interface
+- Modern, intuitive interface with animations
+- Dark mode by default (with light mode toggle)
+- Responsive design for all devices
+- Offline fallback for playing without an internet connection
+- Confetti celebrations for high-scoring words
+- Toast notifications for game events
 
 ## Technologies Used
 
 - **Monorepo**: Turborepo for efficient builds and dependency management
 - **TypeScript**: Full type safety across the entire codebase
-- **Frontend**: Next.js, React, Tailwind CSS
+- **Frontend**:
+  - Next.js and React for the UI framework
+  - Tailwind CSS for styling with dark mode support
+  - Framer Motion for smooth animations and transitions
+  - React Confetti for celebration effects
+  - Custom toast notification system
 - **Backend**: Node.js, Express, MongoDB
 - **Authentication**: JWT
 - **Shared Code**: Common types and utilities shared between frontend and backend
+- **Deployment**: Vercel-ready configuration with API fallbacks
 
 ## Project Structure
 
@@ -38,9 +49,22 @@ word-scramble-game/
 │   │   └── package.json
 │   │
 │   └── frontend/        # Next.js web application
-│       ├── components/
-│       ├── pages/
-│       ├── styles/
+│       ├── components/  # Reusable UI components
+│       │   ├── Layout.js       # Main layout with dark mode support
+│       │   ├── Confetti.js     # Celebration effects
+│       │   ├── Toast.js        # Individual toast notification
+│       │   └── ToastProvider.js # Toast notification system
+│       ├── hooks/      # Custom React hooks
+│       │   └── useWindowSize.js # Window dimensions hook
+│       ├── pages/      # Next.js pages
+│       │   ├── _app.js         # App wrapper with providers
+│       │   ├── _document.js    # Custom document with dark mode init
+│       │   ├── index.js        # Home page
+│       │   ├── game.js         # Game page
+│       │   └── leaderboard.js  # Leaderboard page
+│       ├── services/   # API services
+│       │   └── api.js          # API client with fallbacks
+│       ├── styles/     # Global styles and Tailwind config
 │       └── package.json
 │
 ├── packages/
@@ -113,12 +137,33 @@ npm run build
 
 ## Game Rules
 
-1. You'll receive 8 random letters
+1. You'll receive a set of random letters (configurable: 10, 15, or 25 letters)
 2. Create as many valid words as possible within 60 seconds
 3. Each letter is worth 1 point
-4. Longer words (4+ letters) earn bonus points
+4. Longer words earn bonus points:
+   - 4+ letters: (length - 3) × 2 bonus points
+   - 6+ letters: additional 5 bonus points
+   - 8+ letters: additional 10 bonus points
 5. Each word can only be used once
 6. All words must be legitimate English words
+7. High-scoring words (5+ points) trigger confetti celebrations
+8. Submit your score to the leaderboard when the game ends
+
+## Special Features
+
+### Dark Mode
+
+The game uses dark mode by default for a more comfortable gaming experience, especially in low-light environments. A toggle in the header allows switching between dark and light modes. The preference is saved in localStorage for future visits.
+
+### Offline Support
+
+The game includes fallback mechanisms to work even when the backend API is not available:
+
+- Local word validation when the API is unreachable
+- Sample leaderboard data when online leaderboard cannot be fetched
+- Offline score submission that provides feedback even without a server connection
+
+This ensures players can enjoy the game regardless of their internet connection status.
 
 ## Contributing
 
