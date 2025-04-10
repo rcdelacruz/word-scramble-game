@@ -11,10 +11,8 @@ function Error({ statusCode }) {
       <p className="text-lg mb-6">
         We apologize for the inconvenience. Please try again later.
       </p>
-      <Link href="/">
-        <a className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-          Go back home
-        </a>
+      <Link href="/" className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+        Go back home
       </Link>
     </div>
   );
