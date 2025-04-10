@@ -13,7 +13,7 @@ export default function Custom500() {
         <h2 className="text-2xl font-semibold text-gray-800 dark:text-white mb-4">Server Error</h2>
 
         <p className="text-gray-600 dark:text-gray-300 mb-8">
-          We're sorry, something went wrong on our server. Please try again later.
+          We&apos;re sorry, something went wrong on our server. Please try again later.
         </p>
 
         <Link href="/" className="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">

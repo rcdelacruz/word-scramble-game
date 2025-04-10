@@ -19,7 +19,9 @@ describe('Word Generator Utility', () => {
 
     it('should generate different letter sets for different difficulties', () => {
       const easyLetters = wordUtils.generateLetterSet('easy', 10);
-      const mediumLetters = wordUtils.generateLetterSet('medium', 10);
+      // We're not directly using mediumLetters in assertions, but keeping it for documentation
+      // of what we're testing - using underscore prefix to avoid ESLint error
+      const _mediumLetters = wordUtils.generateLetterSet('medium', 10);
       const hardLetters = wordUtils.generateLetterSet('hard', 10);
 
       // This is a probabilistic test, but with different letter distributions

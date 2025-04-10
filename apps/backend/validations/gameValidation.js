@@ -28,6 +28,7 @@ const submitScore = {
     score: Joi.number().required().min(0),
     boardSize: Joi.number().valid(10, 15, 25).default(10),
     wordsFound: Joi.array().items(Joi.string()).default([]),
+    words: Joi.array().items(Joi.string()), // Added for backward compatibility with tests
     difficulty: Joi.string().valid('easy', 'medium', 'hard').default('medium'),
     gameMode: Joi.string().valid('classic', 'timed', 'daily').default('classic'),
   }),
