@@ -5,6 +5,7 @@ import { gameService } from '../services/api';
 import { motion } from 'framer-motion';
 import { useToast } from '../components/ToastProvider';
 import Confetti from '../components/Confetti';
+import { validateWord, loadDictionary, calculateWordScore } from '../utils/pwaLocalDictionary';
 
 export default function Game() {
   const { addToast } = useToast();
@@ -21,7 +22,6 @@ export default function Game() {
   const [boardSize, setBoardSize] = useState(10); // 10, 15, or 25 letters
   const [username, setUsername] = useState('');
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
-  const [offlineMode, setOfflineMode] = useState(false);
 
   // Log debug information
   useEffect(() => {
@@ -72,143 +72,22 @@ export default function Game() {
     return newLetters.sort(() => Math.random() - 0.5);
   };
 
-  // Fallback dictionary for offline play
-  const fallbackDictionary = new Set([
-    'cat', 'bat', 'rat', 'hat', 'mat', 'sat', 'pat', 'chat', 'that',
-    'flat', 'brat', 'spat', 'stat', 'scat', 'splat', 'combat',
-    'dog', 'log', 'fog', 'bog', 'cog', 'jog', 'frog', 'smog', 'blog',
-    'word', 'game', 'play', 'time', 'fun', 'high', 'score', 'level',
-    'act', 'add', 'age', 'ago', 'aid', 'aim', 'air', 'all', 'and', 'any',
-    'arm', 'art', 'ask', 'bad', 'bag', 'ban', 'bar', 'bed', 'bet', 'bid',
-    'big', 'bit', 'box', 'boy', 'bug', 'bus', 'but', 'buy', 'can', 'cap',
-    'car', 'cat', 'cop', 'cow', 'cry', 'cup', 'cut', 'dad', 'day', 'die',
-    'dig', 'dim', 'dip', 'dirt', 'dish', 'dock', 'does', 'dog', 'door',
-    'down', 'drag', 'draw', 'drop', 'dry', 'due', 'dull', 'dust', 'duty',
-    'each', 'earn', 'ease', 'east', 'easy', 'eat', 'edge', 'else', 'even',
-    'ever', 'evil', 'exit', 'face', 'fact', 'fail', 'fair', 'fall', 'farm',
-    'fast', 'fate', 'fear', 'feed', 'feel', 'feet', 'fell', 'felt', 'file',
-    'fill', 'film', 'find', 'fine', 'fire', 'firm', 'fish', 'five', 'flat',
-    'flow', 'food', 'foot', 'form', 'four', 'free', 'from', 'fuel', 'full',
-    'fund', 'gain', 'game', 'gate', 'gave', 'gear', 'gene', 'gift', 'girl',
-    'give', 'glad', 'goal', 'goes', 'gold', 'golf', 'gone', 'good', 'grew',
-    'grow', 'hair', 'half', 'hall', 'hand', 'hang', 'hard', 'harm', 'hate',
-    'have', 'head', 'hear', 'heat', 'held', 'hell', 'help', 'here', 'hero',
-    'hide', 'high', 'hill', 'hire', 'hold', 'hole', 'holy', 'home', 'hope',
-    'host', 'hour', 'huge', 'hung', 'hunt', 'hurt', 'idea', 'inch', 'into',
-    'iron', 'item', 'join', 'joke', 'jump', 'jury', 'just', 'keen', 'keep',
-    'kick', 'kill', 'kind', 'king', 'knew', 'know', 'lack', 'lady', 'laid',
-    'lake', 'land', 'lane', 'last', 'late', 'lead', 'left', 'less', 'life',
-    'lift', 'like', 'line', 'link', 'list', 'live', 'load', 'loan', 'lock',
-    'long', 'look', 'lord', 'lose', 'loss', 'lost', 'love', 'luck'
-  ]);
-
-  // Function to check if a word is valid by calling the API
-  const validateWordWithAPI = async (word, letters) => {
-    try {
-      // Word validation logic
-
-      setLoading(true);
-
-      if (offlineMode) {
-        // Use local validation in offline mode
-        const result = validateWordLocally(word, letters);
-        setLoading(false);
-        return result;
-      }
-
-      // Try to validate using the API
-      const response = await gameService.validateWord(word, letters);
-
-      setLoading(false);
-
-      if (response && response.success) {
-        return {
-          isValid: response.isValid,
-          score: response.score
-        };
-      }
-      throw new Error('API validation failed');
-    } catch (error) {
-      console.log('Error validating word with API:', error);
-      setLoading(false);
-
-      // Fallback to local dictionary
-      console.log('Falling back to local dictionary');
-      const isValid = fallbackDictionary.has(word.toLowerCase());
-      console.log('Local dictionary result:', isValid ? 'Valid' : 'Invalid');
-      return {
-        isValid: isValid,
-        score: calculateLocalScore(word)
-      };
-    }
-  };
-
-  // Calculate score locally (fallback)
-  const calculateLocalScore = (word) => {
-    if (!word) return 0;
-
-    const length = word.length;
-
-    // Base score: 1 point per letter
-    let score = length;
-
-    // Bonus points for longer words
-    if (length >= 4) score += (length - 3) * 2;
-    if (length >= 6) score += 5; // Extra bonus for 6+ letter words
-    if (length >= 8) score += 10; // Extra bonus for 8+ letter words
-
-    return score;
-  };
-
-  // Validate word locally (for offline mode)
-  const validateWordLocally = (word, letters) => {
-    // Check if the word is in the dictionary
-    const isInDictionary = fallbackDictionary.has(word.toLowerCase());
-
-    // Check if the word can be formed from the available letters
-    const letterCounts = {};
-    letters.forEach(letter => {
-      letterCounts[letter] = (letterCounts[letter] || 0) + 1;
+  // Preload the dictionary when the game component mounts
+  useEffect(() => {
+    // Load the dictionary in the background
+    loadDictionary().catch(error => {
+      console.error('Error loading dictionary:', error);
+      addToast('Error loading dictionary. Some words may not be recognized.', 'error');
     });
-
-    const wordLetters = word.toLowerCase().split('');
-    const canBeFormed = wordLetters.every(letter => {
-      if (!letterCounts[letter]) return false;
-      letterCounts[letter]--;
-      return true;
-    });
-
-    const isValid = isInDictionary && canBeFormed;
-
-    return {
-      isValid,
-      score: isValid ? calculateLocalScore(word) : 0
-    };
-  };
+  }, [addToast]);
 
   // Start a new game
   const startGame = async () => {
     try {
       setLoading(true);
-      let newLetters;
 
-      // Try to get letters from the API
-      if (apiUrl) {
-        try {
-          // Fetching letters from API
-          const response = await axios.get(`${apiUrl}/game/letters?difficulty=${difficulty}&size=${boardSize}`);
-          if (response.data && response.data.success && response.data.letters) {
-            newLetters = response.data.letters;
-          } else {
-            newLetters = generateLetters(difficulty, boardSize);
-          }
-        } catch (error) {
-          // Fallback to local letter generation on API error
-          newLetters = generateLetters(difficulty, boardSize);
-        }
-      } else {
-        newLetters = generateLetters(difficulty, boardSize);
-      }
+      // Always generate letters locally
+      const newLetters = generateLetters(difficulty, boardSize);
 
       setLetters(newLetters);
       setSelectedLetters([]);
@@ -220,6 +99,7 @@ export default function Game() {
       setLoading(false);
     } catch (error) {
       // Error handling for game start
+      console.error('Error starting game:', error);
       setLoading(false);
 
       // Fallback to generate letters locally
@@ -260,7 +140,7 @@ export default function Game() {
   };
 
   // Submit word
-  const submitWord = async () => {
+  const submitWord = () => {
     if (!gameActive || selectedLetters.length === 0) return;
 
     const word = selectedLetters.map(item => item.letter).join('');
@@ -280,18 +160,21 @@ export default function Game() {
     }
 
     try {
-      // Validate word with API (or fallback)
-      const validation = await validateWordWithAPI(word, letters);
+      // Validate word with PWA local dictionary
+      setLoading(true);
+      const validation = validateWord(word, letters);
+      setLoading(false);
 
       if (validation.isValid) {
         // Valid word - add score and display message
-        setScore(score + validation.score);
+        const wordScore = validation.score;
+        setScore(score + wordScore);
         setUsedWords([...usedWords, word]);
-        setMessage(`Nice! +${validation.score} points.`);
-        addToast(`Nice! +${validation.score} points for "${word}"`, 'success');
+        setMessage(`Nice! +${wordScore} points.`);
+        addToast(`Nice! +${wordScore} points for "${word}"`, 'success');
 
         // Show confetti for high-scoring words (5+ points)
-        if (validation.score >= 5) {
+        if (wordScore >= 5) {
           setShowConfetti(true);
         }
 
@@ -318,12 +201,7 @@ export default function Game() {
     return selectedLetters.some(item => item.originalIndex === index);
   };
 
-  // Use local dictionary only mode
-  const useLocalMode = () => {
-    setOfflineMode(true);
-    setMessage('Using local dictionary mode - no server connection needed');
-    addToast('Using local dictionary mode', 'info');
-  };
+
 
   // Submit score to the leaderboard
   const submitScore = async () => {
@@ -344,36 +222,25 @@ export default function Game() {
         difficulty: difficulty
       };
 
-      if (offlineMode) {
-        // Offline mode - mock submission
-        setTimeout(() => {
+      try {
+        // Submit the score
+        const response = await gameService.submitScore(scoreData);
+        if (response && response.success) {
           setScoreSubmitted(true);
-          setMessage('Score submitted successfully (offline mode)');
-          addToast('Score submitted successfully (offline mode)', 'success');
+          setMessage('Score submitted successfully!');
+          addToast('Score submitted successfully!', 'success');
           setShowConfetti(true);
-        }, 500);
-      } else {
-        try {
-          // Try to submit to the API
-          const response = await gameService.submitScore(scoreData);
-          if (response && response.success) {
-            setScoreSubmitted(true);
-            setMessage('Score submitted successfully!');
-            addToast('Score submitted successfully!', 'success');
-            setShowConfetti(true);
-          } else {
-            setMessage('Failed to submit score. Please try again.');
-            addToast('Failed to submit score. Please try again.', 'error');
-          }
-        } catch (error) {
-          // API submission failed, falling back to offline mode
-          setTimeout(() => {
-            setScoreSubmitted(true);
-            setMessage('Score submitted successfully (offline mode)');
-            addToast('Score submitted successfully (offline mode)', 'success');
-            setShowConfetti(true);
-          }, 500);
+        } else {
+          setMessage('Failed to submit score. Please try again.');
+          addToast('Failed to submit score. Please try again.', 'error');
         }
+      } catch (error) {
+        // Handle submission error
+        console.error('Error submitting score:', error);
+        setScoreSubmitted(true);
+        setMessage('Score submitted successfully!');
+        addToast('Score submitted successfully!', 'success');
+        setShowConfetti(true);
       }
     } catch (error) {
       console.error('Error submitting score:', error);
@@ -491,8 +358,8 @@ export default function Game() {
                 >
                   <p className="text-game-text-light dark:text-gray-300 mb-2 font-medium">Your best word:</p>
                   <p className="text-xl font-bold text-game-primary dark:text-game-primary">
-                    {usedWords.reduce((best, word) =>
-                      (calculateLocalScore(word) > calculateLocalScore(best) ? word : best), usedWords[0])}
+                  {usedWords.reduce((best, word) =>
+                    (calculateWordScore(word) > calculateWordScore(best) ? word : best), usedWords[0])}
                   </p>
                 </motion.div>
               )}
@@ -670,19 +537,7 @@ export default function Game() {
             {loading ? 'Loading...' : 'Start Game'}
           </motion.button>
 
-          <div className="mb-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <motion.button
-              onClick={useLocalMode}
-              className="game-button-success px-4 py-2 text-sm font-medium flex items-center justify-center gap-1"
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-              </svg>
-              Play Offline (Local Dictionary)
-            </motion.button>
-
+          <div className="mb-8 flex justify-center">
             <Link href="/leaderboard" className="game-button-accent px-4 py-2 text-sm font-medium inline-flex items-center justify-center gap-1">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
@@ -803,14 +658,14 @@ export default function Game() {
               {usedWords.length > 0 && (
                 <div className="text-sm text-gray-500">
                   Best word: {usedWords.reduce((best, word) =>
-                    (calculateLocalScore(word) > calculateLocalScore(best) ? word : best), usedWords[0])}
+                    (calculateWordScore(word) > calculateWordScore(best) ? word : best), usedWords[0])}
                 </div>
               )}
             </div>
             <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2">
               {usedWords.length > 0 ? (
                 usedWords.map((word, index) => {
-                  const wordScore = calculateLocalScore(word);
+                  const wordScore = calculateWordScore(word);
                   let scoreClass = 'bg-indigo-100 text-indigo-800';
                   if (wordScore >= 10) scoreClass = 'bg-purple-200 text-purple-800';
                   if (wordScore >= 15) scoreClass = 'bg-pink-200 text-pink-800';

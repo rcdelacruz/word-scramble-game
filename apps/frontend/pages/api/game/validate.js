@@ -1,9 +1,31 @@
-// API route for validating words
-import axios from 'axios';
+// API route for validating words using the backend dictionary
+import fs from 'fs';
+import path from 'path';
 
-// This is the URL of your backend API
-// Replace with the correct URL of your backend deployment
-const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://word-scramble-api.vercel.app/api';
+// Load the dictionary from the backend file
+let dictionary = new Set();
+
+try {
+  // Path to the dictionary file
+  const dictionaryPath = path.join(process.cwd(), '..', '..', 'backend', 'data', 'dictionary.txt');
+  console.log('Looking for dictionary at:', dictionaryPath);
+
+  if (fs.existsSync(dictionaryPath)) {
+    // Read the dictionary file
+    const content = fs.readFileSync(dictionaryPath, 'utf8');
+    const words = content
+      .toLowerCase()
+      .split(/\r?\n/)
+      .filter(word => word.length >= 3 && /^[a-z]+$/.test(word));
+
+    dictionary = new Set(words);
+    console.log(`Dictionary loaded with ${dictionary.size} words`);
+  } else {
+    console.warn('Dictionary file not found, using permissive validation');
+  }
+} catch (error) {
+  console.error('Error loading dictionary:', error);
+}
 
 export default async function handler(req, res) {
   try {
@@ -12,29 +34,57 @@ export default async function handler(req, res) {
       return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
-    // Forward the request to the backend API
-    const response = await axios.post(`${BACKEND_API_URL}/game/validate`, req.body, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const { word, letters } = req.body;
 
-    // Return the response from the backend
-    return res.status(200).json(response.data);
-  } catch (error) {
-    console.error('Error forwarding request to backend:', error);
-    
-    // Return a fallback response if the backend is not available
-    if (error.response) {
-      // The backend returned an error response
-      return res.status(error.response.status).json(error.response.data);
-    } else {
-      // The backend is not available
-      return res.status(500).json({
+    if (!word || !letters) {
+      return res.status(400).json({
         success: false,
-        error: 'Backend service is not available',
-        message: error.message,
+        error: 'Missing required parameters'
       });
     }
+
+    // Check if the word can be formed from the letters
+    const letterCounts = {};
+    letters.forEach(letter => {
+      letterCounts[letter.toLowerCase()] = (letterCounts[letter.toLowerCase()] || 0) + 1;
+    });
+
+    const wordLetters = word.toLowerCase().split('');
+    const canBeFormed = wordLetters.every(letter => {
+      if (!letterCounts[letter]) return false;
+      letterCounts[letter]--;
+      return true;
+    });
+
+    // Check if the word is in our dictionary
+    const isInDictionary = dictionary.size > 0 ? dictionary.has(word.toLowerCase()) : word.length >= 3;
+
+    // Word is valid if it can be formed from the letters AND it's in our dictionary
+    const isValid = canBeFormed && isInDictionary;
+
+    // Calculate a score based on word length
+    const calculateScore = (word) => {
+      const length = word.length;
+      let score = length;
+      if (length >= 5) score += 3;
+      if (length >= 7) score += 5;
+      if (length >= 9) score += 7;
+      return score;
+    };
+
+    return res.status(200).json({
+      success: true,
+      word,
+      isValid,
+      score: isValid ? calculateScore(word) : 0
+    });
+  } catch (error) {
+    console.error('Error validating word:', error);
+
+    return res.status(500).json({
+      success: false,
+      error: 'Error validating word',
+      message: error.message,
+    });
   }
 }

@@ -1,9 +1,4 @@
-// API route for submitting scores
-import axios from 'axios';
-
-// This is the URL of your backend API
-// Replace with the correct URL of your backend deployment
-const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://word-scramble-api.vercel.app/api';
+// API route for submitting scores locally
 
 export default async function handler(req, res) {
   try {
@@ -12,29 +7,35 @@ export default async function handler(req, res) {
       return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
-    // Forward the request to the backend API
-    const response = await axios.post(`${BACKEND_API_URL}/game/score`, req.body, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const scoreData = req.body;
 
-    // Return the response from the backend
-    return res.status(200).json(response.data);
-  } catch (error) {
-    console.error('Error forwarding request to backend:', error);
-    
-    // Return a fallback response if the backend is not available
-    if (error.response) {
-      // The backend returned an error response
-      return res.status(error.response.status).json(error.response.data);
-    } else {
-      // The backend is not available
-      return res.status(500).json({
+    // Validate required fields
+    if (!scoreData.username || !scoreData.score) {
+      return res.status(400).json({
         success: false,
-        error: 'Backend service is not available',
-        message: error.message,
+        error: 'Missing required fields (username, score)'
       });
     }
+
+    // Create a mock score submission response
+    const submittedScore = {
+      ...scoreData,
+      id: `local-${Date.now()}`,
+      date: new Date().toISOString()
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: 'Score submitted successfully (local mode)',
+      score: submittedScore
+    });
+  } catch (error) {
+    console.error('Error submitting score:', error);
+
+    return res.status(500).json({
+      success: false,
+      error: 'Error submitting score',
+      message: error.message,
+    });
   }
 }
