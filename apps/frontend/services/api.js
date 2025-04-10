@@ -9,7 +9,7 @@ const isLocalhost = typeof window !== 'undefined' &&
 const getBaseURL = () => {
   // If we're on localhost, use the local backend
   if (isLocalhost) {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003/api';
   }
 
   // For Vercel deployment with monorepo

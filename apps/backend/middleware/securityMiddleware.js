@@ -32,15 +32,17 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps, curl, etc)
     if (!origin) return callback(null, true);
-    
+
     // Check if origin is allowed
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:3002',
+      'http://localhost:3003',
       'https://word-scramble-game.vercel.app',
+      'https://scramble.rcdc.me',
     ];
-    
+
     if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
@@ -56,20 +58,20 @@ const corsOptions = {
 const applySecurityMiddleware = (app) => {
   // Set security HTTP headers
   app.use(helmet());
-  
+
   // Enable CORS
   app.use(cors(corsOptions));
-  
+
   // Sanitize data
   app.use(xss());
   app.use(mongoSanitize());
-  
+
   // Apply rate limiting to all requests
   app.use('/api/', limiter);
-  
+
   // Apply game-specific rate limiting
   app.use('/api/game/validate', gameLimiter);
-  
+
   return app;
 };
 
