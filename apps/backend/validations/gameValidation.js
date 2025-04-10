@@ -27,7 +27,9 @@ const submitScore = {
     username: Joi.string().allow('').max(20).default('Anonymous'),
     score: Joi.number().required().min(0),
     boardSize: Joi.number().valid(10, 15, 25).default(10),
-    words: Joi.array().items(Joi.string()).default([]),
+    wordsFound: Joi.array().items(Joi.string()).default([]),
+    difficulty: Joi.string().valid('easy', 'medium', 'hard').default('medium'),
+    gameMode: Joi.string().valid('classic', 'timed', 'daily').default('classic'),
   }),
 };
 
@@ -36,6 +38,8 @@ const getLeaderboard = {
   query: Joi.object().keys({
     timeFrame: Joi.string().valid('all', 'daily', 'weekly', 'monthly').default('all'),
     limit: Joi.number().min(1).max(100).default(10),
+    gameMode: Joi.string().valid('classic', 'timed', 'daily'),
+    boardSize: Joi.number().valid(10, 15, 25),
   }),
 };
 
