@@ -58,7 +58,7 @@ export const gameService = {
       const response = await api.get(`/game/letters?difficulty=${difficulty}`);
       return response.data;
     } catch (error) {
-      console.error('Error getting letters:', error);
+      // Error getting letters, using fallback
       // Return sample letters as fallback
       return {
         success: true,
@@ -73,7 +73,7 @@ export const gameService = {
       const response = await api.post('/game/validate', { word, letters });
       return response.data;
     } catch (error) {
-      console.error('Error validating word:', error);
+      // Error validating word, using local validation
 
       // Fallback validation logic when API is not available
       // Simple check if the word can be formed from the letters
@@ -114,7 +114,7 @@ export const gameService = {
       const response = await api.post('/game/score', scoreData);
       return response.data;
     } catch (error) {
-      console.error('Error submitting score:', error);
+      // Error submitting score, using offline mode
 
       // Fallback for when API is not available
       // Return a mock successful response
@@ -140,7 +140,7 @@ export const gameService = {
       const response = await api.get(`/game/leaderboard?${query.toString()}`);
       return response.data;
     } catch (error) {
-      console.error('Error getting leaderboard:', error);
+      // Error getting leaderboard, using sample data
 
       // Fallback for when API is not available
       // Return sample leaderboard data

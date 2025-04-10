@@ -6,7 +6,7 @@ let dictionary = {};
 // Load dictionary from file
 try {
   // We'll use a path relative to this file
-  const dictionaryPath = path.join(__dirname, '../../data/dictionary.txt');
+  const dictionaryPath = path.join(__dirname, '../data/dictionary.txt');
   console.log('Looking for dictionary at:', dictionaryPath);
 
   // Check if the dictionary file exists

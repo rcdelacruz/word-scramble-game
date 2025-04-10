@@ -1,0 +1,281 @@
+openapi: 3.0.0
+info:
+  title: Word Scramble Game API
+  description: API for the Word Scramble Game
+  version: 1.0.0
+  contact:
+    email: support@wordscramble.com
+servers:
+  - url: http://localhost:3001/api
+    description: Local development server
+  - url: https://word-scramble-game-backend.vercel.app/api
+    description: Production server
+tags:
+  - name: Game
+    description: Game-related endpoints
+  - name: Users
+    description: User management endpoints
+paths:
+  /game/letters:
+    get:
+      summary: Get a set of letters for a new game
+      tags:
+        - Game
+      parameters:
+        - in: query
+          name: difficulty
+          schema:
+            type: string
+            enum: [easy, medium, hard]
+          description: Difficulty level
+          required: false
+        - in: query
+          name: size
+          schema:
+            type: integer
+            enum: [10, 15, 25]
+          description: Number of letters to generate
+          required: false
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  letters:
+                    type: array
+                    items:
+                      type: string
+                    example: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']
+                  possibleWords:
+                    type: integer
+                    example: 42
+                  boardSize:
+                    type: integer
+                    example: 10
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /game/validate:
+    post:
+      summary: Validate a word
+      tags:
+        - Game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - word
+                - letters
+              properties:
+                word:
+                  type: string
+                  example: 'test'
+                letters:
+                  type: array
+                  items:
+                    type: string
+                  example: ['t', 'e', 's', 't', 'a', 'b', 'c', 'd', 'e', 'f']
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  isValid:
+                    type: boolean
+                    example: true
+                  score:
+                    type: integer
+                    example: 4
+                  word:
+                    type: string
+                    example: 'test'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /game/score:
+    post:
+      summary: Submit a score
+      tags:
+        - Game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - score
+              properties:
+                username:
+                  type: string
+                  example: 'player1'
+                score:
+                  type: integer
+                  example: 100
+                boardSize:
+                  type: integer
+                  example: 10
+                words:
+                  type: array
+                  items:
+                    type: string
+                  example: ['test', 'word']
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  score:
+                    $ref: '#/components/schemas/Score'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /game/leaderboard:
+    get:
+      summary: Get the leaderboard
+      tags:
+        - Game
+      parameters:
+        - in: query
+          name: timeFrame
+          schema:
+            type: string
+            enum: [all, daily, weekly, monthly]
+          description: Time frame for the leaderboard
+          required: false
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Maximum number of scores to return
+          required: false
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  scores:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Score'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Clear the leaderboard (admin only)
+      tags:
+        - Game
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: 'Leaderboard cleared successfully'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Score:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: '60d21b4667d0d8992e610c85'
+        username:
+          type: string
+          example: 'player1'
+        score:
+          type: integer
+          example: 100
+        boardSize:
+          type: integer
+          example: 10
+        words:
+          type: array
+          items:
+            type: string
+          example: ['test', 'word']
+        date:
+          type: string
+          format: date-time
+          example: '2023-04-10T12:00:00Z'
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: 'Error message'

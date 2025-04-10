@@ -26,7 +26,7 @@ export default function Game() {
   // Log debug information
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      console.log('Current frontend URL:', window.location.href);
+      // URL is used for API base determination
     }
   }, []);
 
@@ -105,15 +105,12 @@ export default function Game() {
   // Function to check if a word is valid by calling the API
   const validateWordWithAPI = async (word, letters) => {
     try {
-      console.log('Validating word:', word);
-      console.log('Letters:', letters);
-      console.log('Offline mode:', offlineMode);
+      // Word validation logic
 
       setLoading(true);
 
       if (offlineMode) {
         // Use local validation in offline mode
-        console.log('Using local validation in offline mode');
         const result = validateWordLocally(word, letters);
         setLoading(false);
         return result;
@@ -123,7 +120,6 @@ export default function Game() {
       const response = await gameService.validateWord(word, letters);
 
       setLoading(false);
-      console.log('API Response:', response);
 
       if (response && response.success) {
         return {
@@ -199,7 +195,7 @@ export default function Game() {
       // Try to get letters from the API
       if (apiUrl) {
         try {
-          console.log('Fetching letters from API:', `${apiUrl}/game/letters?difficulty=${difficulty}&size=${boardSize}`);
+          // Fetching letters from API
           const response = await axios.get(`${apiUrl}/game/letters?difficulty=${difficulty}&size=${boardSize}`);
           if (response.data && response.data.success && response.data.letters) {
             newLetters = response.data.letters;
@@ -207,7 +203,7 @@ export default function Game() {
             newLetters = generateLetters(difficulty, boardSize);
           }
         } catch (error) {
-          console.log('Error getting letters from API:', error);
+          // Fallback to local letter generation on API error
           newLetters = generateLetters(difficulty, boardSize);
         }
       } else {
@@ -223,7 +219,7 @@ export default function Game() {
       setGameActive(true);
       setLoading(false);
     } catch (error) {
-      console.log('Error starting game:', error);
+      // Error handling for game start
       setLoading(false);
 
       // Fallback to generate letters locally
@@ -306,7 +302,7 @@ export default function Game() {
         addToast('Not a valid word.', 'error');
       }
     } catch (error) {
-      console.log('Error submitting word:', error);
+      // Error handling for word submission
       setMessage('Error checking word. Try again.');
       addToast('Error checking word. Try again.', 'error');
     }
@@ -350,7 +346,6 @@ export default function Game() {
 
       if (offlineMode) {
         // Offline mode - mock submission
-        console.log('Using offline mode for score submission');
         setTimeout(() => {
           setScoreSubmitted(true);
           setMessage('Score submitted successfully (offline mode)');
@@ -371,8 +366,7 @@ export default function Game() {
             addToast('Failed to submit score. Please try again.', 'error');
           }
         } catch (error) {
-          console.log('API submission failed, using offline mode');
-          // Fallback to offline mode if API fails
+          // API submission failed, falling back to offline mode
           setTimeout(() => {
             setScoreSubmitted(true);
             setMessage('Score submitted successfully (offline mode)');
