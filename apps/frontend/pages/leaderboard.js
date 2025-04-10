@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { gameService } from '../services/api';
-import { motion } from 'framer-motion';
 
 export default function Leaderboard() {
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -35,16 +34,14 @@ export default function Leaderboard() {
           setLeaderboardData(response.scores || []);
           setOfflineMode(false);
         } else {
-          // Fallback to sample data
-          console.log('No scores found, using sample data');
+          // Fallback to sample data when no scores found
           setLeaderboardData(sampleLeaderboardData);
           setOfflineMode(true);
         }
         setError(null);
       } catch (err) {
         console.error('Error fetching leaderboard:', err);
-        // Fallback to sample data on error
-        console.log('Error loading leaderboard, using sample data');
+        // Error loading leaderboard, falling back to sample data
         setLeaderboardData(sampleLeaderboardData);
         setOfflineMode(true);
         setError('Using sample leaderboard data (offline mode)');
