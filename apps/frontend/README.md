@@ -6,7 +6,7 @@ This is the frontend for the Word Scramble Game, built with Next.js, React, and 
 
 - Modern, responsive UI with dark mode support
 - Animations and transitions for enhanced user experience
-- Offline mode with fallback mechanisms
+- Local dictionary for word validation
 - Toast notifications for game events
 - Confetti celebrations for high-scoring words
 - Leaderboard for tracking high scores
@@ -89,13 +89,13 @@ frontend/
 
 The game uses dark mode by default for a more comfortable gaming experience, especially in low-light environments. A toggle in the header allows switching between dark and light modes. The preference is saved in localStorage for future visits.
 
-### Offline Support
+### Local Dictionary
 
-The game includes fallback mechanisms to work even when the backend API is not available:
+The game uses a local dictionary for word validation, making it fast and reliable:
 
-- Local word validation when the API is unreachable
-- Sample leaderboard data when online leaderboard cannot be fetched
-- Offline score submission that provides feedback even without a server connection
+- Efficient word validation using an in-memory dictionary
+- Quick response times for word checking
+- No dependency on external APIs for core gameplay
 
 ## Deployment
 

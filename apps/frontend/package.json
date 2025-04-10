@@ -4,10 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/update-dictionary.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "echo \"No tests specified yet\" && exit 0"
+    "test": "echo \"No tests specified yet\" && exit 0",
+    "update-dictionary": "node scripts/update-dictionary.js",
+    "copy-dictionary": "node scripts/copy-dictionary.js"
   },
   "dependencies": {
     "axios": "^1.6.0",

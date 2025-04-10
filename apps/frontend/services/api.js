@@ -106,16 +106,71 @@ export const gameService = {
     }
   },
 
-  // Validate a word
+  // Validate a word using local dictionary
   validateWord: async (word, letters) => {
     try {
+      // First try to use the API route for validation
       const response = await api.post('/game/validate', { word, letters });
       return response.data;
     } catch (error) {
-      // Error validating word, using local validation
+      console.log('Error using API route for validation, falling back to local validation');
 
-      // Fallback validation logic when API is not available
-      // Simple check if the word can be formed from the letters
+      // Local validation logic - fallback
+      // Common English words dictionary (expanded)
+      const commonWords = new Set([
+        'cat', 'bat', 'rat', 'hat', 'mat', 'sat', 'pat', 'chat', 'that', 'flat',
+        'brat', 'spat', 'stat', 'scat', 'splat', 'combat', 'dog', 'log', 'fog', 'bog',
+        'cog', 'jog', 'frog', 'smog', 'blog', 'word', 'game', 'play', 'time', 'fun',
+        'high', 'score', 'level', 'win', 'lose', 'act', 'add', 'age', 'ago', 'aid',
+        'aim', 'air', 'all', 'and', 'any', 'arm', 'art', 'ask', 'bad', 'bag', 'ban',
+        'bar', 'bed', 'bet', 'bid', 'big', 'bit', 'box', 'boy', 'bug', 'bus', 'but',
+        'buy', 'can', 'cap', 'car', 'cat', 'cop', 'cow', 'cry', 'cup', 'cut', 'dad',
+        'day', 'die', 'dig', 'dim', 'dip', 'dirt', 'dish', 'dock', 'does', 'dog',
+        'door', 'down', 'drag', 'draw', 'drop', 'dry', 'due', 'dull', 'dust', 'duty',
+        'each', 'earn', 'ease', 'east', 'easy', 'eat', 'edge', 'else', 'even', 'ever',
+        'evil', 'exit', 'face', 'fact', 'fail', 'fair', 'fall', 'farm', 'fast', 'fate',
+        'fear', 'feed', 'feel', 'feet', 'fell', 'felt', 'file', 'fill', 'film', 'find',
+        'fine', 'fire', 'firm', 'fish', 'five', 'flat', 'flow', 'food', 'foot', 'form',
+        'four', 'free', 'from', 'fuel', 'full', 'fund', 'gain', 'game', 'gate', 'gave',
+        'gear', 'gene', 'gift', 'girl', 'give', 'glad', 'goal', 'goes', 'gold', 'golf',
+        'gone', 'good', 'grew', 'grow', 'hair', 'half', 'hall', 'hand', 'hang', 'hard',
+        'harm', 'hate', 'have', 'head', 'hear', 'heat', 'held', 'hell', 'help', 'here',
+        'hero', 'hide', 'high', 'hill', 'hire', 'hold', 'hole', 'holy', 'home', 'hope',
+        'host', 'hour', 'huge', 'hung', 'hunt', 'hurt', 'idea', 'inch', 'into', 'iron',
+        'item', 'join', 'joke', 'jump', 'jury', 'just', 'keen', 'keep', 'kick', 'kill',
+        'kind', 'king', 'knew', 'know', 'lack', 'lady', 'laid', 'lake', 'land', 'lane',
+        'last', 'late', 'lead', 'left', 'less', 'life', 'lift', 'like', 'line', 'link',
+        'list', 'live', 'load', 'loan', 'lock', 'long', 'look', 'lord', 'lose', 'loss',
+        'lost', 'love', 'luck', 'made', 'mail', 'main', 'make', 'male', 'many', 'mark',
+        'mass', 'math', 'meal', 'mean', 'meat', 'meet', 'menu', 'mere', 'mess', 'milk',
+        'mind', 'mine', 'miss', 'mode', 'mood', 'moon', 'more', 'most', 'move', 'much',
+        'must', 'name', 'navy', 'near', 'neck', 'need', 'news', 'next', 'nice', 'nine',
+        'none', 'nose', 'note', 'noun', 'nuts', 'okay', 'once', 'only', 'onto', 'open',
+        'oral', 'over', 'pace', 'pack', 'page', 'paid', 'pain', 'pair', 'palm', 'park',
+        'part', 'pass', 'past', 'path', 'peak', 'pick', 'pink', 'plan', 'play', 'plot',
+        'plug', 'plus', 'poem', 'poet', 'poll', 'pool', 'poor', 'port', 'post', 'pull',
+        'pure', 'push', 'race', 'rail', 'rain', 'rank', 'rare', 'rate', 'read', 'real',
+        'rear', 'rely', 'rent', 'rest', 'rice', 'rich', 'ride', 'ring', 'rise', 'risk',
+        'road', 'rock', 'role', 'roll', 'roof', 'room', 'root', 'rope', 'rose', 'rule',
+        'rush', 'safe', 'said', 'sake', 'sale', 'salt', 'same', 'sand', 'save', 'seat',
+        'seed', 'seek', 'seem', 'seen', 'self', 'sell', 'send', 'sent', 'sept', 'ship',
+        'shop', 'shot', 'show', 'shut', 'sick', 'side', 'sign', 'silk', 'sing', 'sink',
+        'site', 'size', 'skin', 'skip', 'slip', 'slow', 'snap', 'snow', 'soft', 'soil',
+        'sold', 'sole', 'some', 'song', 'soon', 'sort', 'soul', 'soup', 'sour', 'span',
+        'spin', 'spot', 'star', 'stay', 'step', 'stop', 'such', 'suit', 'sure', 'take',
+        'tale', 'talk', 'tall', 'tank', 'tape', 'task', 'team', 'tear', 'tell', 'tend',
+        'term', 'test', 'text', 'than', 'that', 'them', 'then', 'they', 'thin', 'this',
+        'thus', 'tide', 'tile', 'till', 'time', 'tiny', 'told', 'toll', 'tone', 'tony',
+        'took', 'tool', 'tour', 'town', 'tree', 'trip', 'true', 'tune', 'turn', 'twin',
+        'type', 'ugly', 'unit', 'upon', 'used', 'user', 'vary', 'vast', 'very', 'vice',
+        'view', 'visa', 'vote', 'wage', 'wait', 'wake', 'walk', 'wall', 'want', 'ward',
+        'warm', 'wash', 'wave', 'ways', 'weak', 'wear', 'week', 'well', 'went', 'were',
+        'west', 'what', 'when', 'whom', 'wide', 'wife', 'wild', 'will', 'wind', 'wine',
+        'wing', 'wire', 'wise', 'wish', 'with', 'wood', 'word', 'wore', 'work', 'yard',
+        'yeah', 'year', 'your', 'zero', 'zone', 'zoo'
+      ]);
+
+      // Check if the word can be formed from the letters
       const letterCounts = {};
       letters.forEach(letter => {
         letterCounts[letter.toLowerCase()] = (letterCounts[letter.toLowerCase()] || 0) + 1;
@@ -127,6 +182,10 @@ export const gameService = {
         letterCounts[letter]--;
         return true;
       });
+
+      // Check if the word is in our dictionary
+      const isInDictionary = commonWords.has(word.toLowerCase());
+      const isValid = isInDictionary && canBeFormed;
 
       // Calculate a score based on word length
       const calculateScore = (word) => {
@@ -141,8 +200,8 @@ export const gameService = {
       return {
         success: true,
         word,
-        isValid: canBeFormed,
-        score: canBeFormed ? calculateScore(word) : 0
+        isValid: isValid,
+        score: isValid ? calculateScore(word) : 0
       };
     }
   },

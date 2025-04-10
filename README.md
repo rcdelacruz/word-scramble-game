@@ -15,9 +15,11 @@ This project features a beautifully designed word game where players create word
 - Modern, intuitive interface with animations
 - Dark mode by default (with light mode toggle)
 - Responsive design for all devices
-- Offline fallback for playing without an internet connection
+- Local dictionary for fast word validation
 - Confetti celebrations for high-scoring words
 - Toast notifications for game events
+- Progressive Web App (PWA) support for offline play
+- Installable on mobile and desktop devices
 
 ## Technologies Used
 
@@ -29,6 +31,8 @@ This project features a beautifully designed word game where players create word
   - Framer Motion for smooth animations and transitions
   - React Confetti for celebration effects
   - Custom toast notification system
+  - Progressive Web App (PWA) capabilities with service worker
+  - IndexedDB for client-side dictionary caching
 - **Backend**: Node.js, Express, MongoDB
 - **Authentication**: JWT
 - **Shared Code**: Common types and utilities shared between frontend and backend
@@ -155,15 +159,61 @@ npm run build
 
 The game uses dark mode by default for a more comfortable gaming experience, especially in low-light environments. A toggle in the header allows switching between dark and light modes. The preference is saved in localStorage for future visits.
 
-### Offline Support
+### Local Dictionary
 
-The game includes fallback mechanisms to work even when the backend API is not available:
+The game uses a local dictionary for word validation, making it fast and reliable:
 
-- Local word validation when the API is unreachable
-- Sample leaderboard data when online leaderboard cannot be fetched
-- Offline score submission that provides feedback even without a server connection
+- Efficient word validation using an in-memory dictionary
+- Quick response times for word checking
+- No dependency on external APIs for core gameplay
+- Client-side caching with IndexedDB for offline use
+- Automatic dictionary updates during build process
 
-This ensures players can enjoy the game regardless of their internet connection status.
+This ensures players can enjoy a smooth and responsive gaming experience, even offline.
+
+### Progressive Web App (PWA)
+
+The game is implemented as a Progressive Web App, providing several benefits:
+
+- **Offline Play**: Play the game without an internet connection
+- **Installable**: Add to home screen on mobile or desktop
+- **Fast Loading**: Cached assets for quick startup
+- **Local Dictionary**: No need for API calls to validate words
+- **Automatic Updates**: Service worker manages updates seamlessly
+
+To install the PWA:
+1. Visit the game in a supported browser (Chrome, Edge, Safari, etc.)
+2. Look for the "Add to Home Screen" or "Install" option in the browser menu
+3. Follow the prompts to install the app
+
+### Updating the Dictionary
+
+The dictionary can be updated in several ways:
+
+1. **Automatic Updates**: The dictionary is automatically updated during the build process
+   ```bash
+   npm run build
+   ```
+
+2. **Manual Updates**: You can manually update the dictionary
+   ```bash
+   # In the frontend directory
+   npm run update-dictionary
+
+   # Or from the project root
+   npm run update-dictionary --filter=frontend
+   ```
+
+3. **Force Copy**: You can force copy the dictionary from backend to frontend
+   ```bash
+   # In the frontend directory
+   npm run copy-dictionary
+
+   # Or from the project root
+   npm run copy-dictionary --filter=frontend
+   ```
+
+When the backend dictionary is updated (e.g., by running the fetchDictionary.js script), you should update the frontend dictionary to keep them in sync.
 
 ## Contributing
 

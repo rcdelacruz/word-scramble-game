@@ -1,36 +1,68 @@
-// API route for getting letter sets
-import axios from 'axios';
-
-// This is the URL of your backend API
-// Replace with the correct URL of your backend deployment
-const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://word-scramble-api.vercel.app/api';
+// API route for generating letter sets locally
 
 export default async function handler(req, res) {
   try {
-    // Forward the request to the backend API
-    const response = await axios.get(`${BACKEND_API_URL}/game/letters`, {
-      params: req.query,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const { difficulty = 'medium', size = 10 } = req.query;
+    const boardSize = parseInt(size, 10) || 10;
 
-    // Return the response from the backend
-    return res.status(200).json(response.data);
+    // Generate random letters locally based on difficulty and board size
+    const generateLetters = (difficultyLevel = 'medium', size = 10) => {
+      // Different letter distributions based on difficulty
+      const letterSets = {
+        easy: {
+          vowels: 'aeioua', // Duplicate common vowels
+          consonants: 'rstlnbcdfghjkmpqvwxyz', // Common consonants first
+          vowelBias: 0.4 // Higher chance of vowels
+        },
+        medium: {
+          vowels: 'aeiou',
+          consonants: 'bcdfghjklmnpqrstvwxyz',
+          vowelBias: 0.3
+        },
+        hard: {
+          vowels: 'aeiou',
+          consonants: 'jkqvwxzbcdfghlmnprst', // Less common consonants first
+          vowelBias: 0.2 // Lower chance of vowels
+        }
+      };
+
+      const { vowels, consonants, vowelBias } = letterSets[difficultyLevel] || letterSets.medium;
+      const newLetters = [];
+
+      // Calculate vowel count based on board size
+      const vowelCount = Math.max(2, Math.floor(size * (difficultyLevel === 'easy' ? 0.4 : 0.3)));
+
+      // Ensure we have minimum number of vowels based on difficulty and board size
+      for (let i = 0; i < vowelCount; i++) {
+        newLetters.push(vowels[Math.floor(Math.random() * vowels.length)]);
+      }
+
+      // Fill the rest with a mix, with bias based on difficulty
+      for (let i = 0; i < (size - vowelCount); i++) {
+        const letterSet = Math.random() < vowelBias ? vowels : consonants;
+        newLetters.push(letterSet[Math.floor(Math.random() * letterSet.length)]);
+      }
+
+      // Shuffle the array
+      return newLetters.sort(() => Math.random() - 0.5);
+    };
+
+    const letters = generateLetters(difficulty, boardSize);
+
+    return res.status(200).json({
+      success: true,
+      letters,
+      difficulty,
+      size: boardSize
+    });
   } catch (error) {
-    console.error('Error forwarding request to backend:', error);
-    
-    // Return a fallback response if the backend is not available
-    if (error.response) {
-      // The backend returned an error response
-      return res.status(error.response.status).json(error.response.data);
-    } else {
-      // The backend is not available
-      return res.status(500).json({
-        success: false,
-        error: 'Backend service is not available',
-        message: error.message,
-      });
-    }
+    console.error('Error generating letters:', error);
+
+    // Return a fallback response if there's an error
+    return res.status(500).json({
+      success: false,
+      error: 'Error generating letters',
+      message: error.message,
+    });
   }
 }

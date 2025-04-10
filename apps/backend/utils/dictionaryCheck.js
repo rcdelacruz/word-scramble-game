@@ -58,8 +58,7 @@ exports.isValidWord = (word) => {
 
 // Get a hint (partial definition or related word)
 exports.getWordHint = (word) => {
-  // In a real app, this would connect to a dictionary API
-  // For now, return a simple message
+  // Using local dictionary only, return a simple hint
   return `This is a ${word.length}-letter word that starts with "${word[0]}"`;
 };
 
