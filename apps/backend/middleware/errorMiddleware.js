@@ -3,6 +3,8 @@
  * Provides centralized error handling for the API
  */
 
+const logger = require('../utils/logger');
+
 // Custom error class for API errors
 class ApiError extends Error {
   constructor(statusCode, message, isOperational = true, stack = '') {
@@ -37,7 +39,7 @@ const errorHandler = (err, req, res, next) => {
   res.locals.error = process.env.NODE_ENV === 'development' ? err : {};
 
   // Log error
-  console.error(`[${new Date().toISOString()}] Error:`, {
+  logger.error('API Error:', {
     message,
     statusCode,
     isOperational,

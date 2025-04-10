@@ -25,7 +25,7 @@ const possibleEnvPaths = [
 let envLoaded = false;
 for (const envPath of possibleEnvPaths) {
   if (fs.existsSync(envPath)) {
-    console.log(`Found and loading .env file from: ${envPath}`);
+    logger.info(`Found and loading .env file from: ${envPath}`);
     require('dotenv').config({ path: envPath });
     envLoaded = true;
     break;
@@ -33,13 +33,13 @@ for (const envPath of possibleEnvPaths) {
 }
 
 if (!envLoaded) {
-  console.log('No .env file found in any expected location. Using default environment variables.');
+  logger.warn('No .env file found in any expected location. Using default environment variables.');
   require('dotenv').config();
 }
 
 // Print all possible env paths that were checked (for debugging)
-console.log('Checked the following paths for .env files:');
-possibleEnvPaths.forEach(p => console.log(`- ${p} (${fs.existsSync(p) ? 'EXISTS' : 'NOT FOUND'})`));
+logger.debug('Checked the following paths for .env files:');
+possibleEnvPaths.forEach(p => logger.debug(`- ${p} (${fs.existsSync(p) ? 'EXISTS' : 'NOT FOUND'})`));
 
 // Import routes
 const gameRoutes = require('./routes/gameRoutes');
