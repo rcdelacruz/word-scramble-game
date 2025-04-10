@@ -50,7 +50,7 @@ export default function Document() {
         <NextScript />
 
         {/* PWA Service Worker Registration */}
-        <script src="/sw-register.js" />
+        <script src="/sw-register.js" defer />
       </body>
     </Html>
   );
