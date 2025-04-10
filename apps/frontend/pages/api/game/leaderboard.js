@@ -16,7 +16,7 @@ const sampleLeaderboardData = [
 
 export default async function handler(req, res) {
   try {
-    const { timeFrame = 'all', limit = 10, boardSize } = req.query;
+    const { limit = 10, boardSize } = req.query;
 
     // Filter by board size if specified
     let filteredScores = [...sampleLeaderboardData];
