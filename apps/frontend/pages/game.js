@@ -456,7 +456,7 @@ export default function Game() {
                   </svg>
                 </div>
                 <h2 className="text-3xl font-bold font-display mb-1">Game Over!</h2>
-                <p className="text-white/80">Here's how you did</p>
+                <p className="text-white/80">Here&apos;s how you did</p>
               </div>
             </div>
 

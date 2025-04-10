@@ -31,7 +31,7 @@ const errorConverter = (err, req, res, next) => {
 };
 
 // Error handler - sends error response
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   const { statusCode, message, isOperational, stack } = err;
 
   // Set locals, only providing error in development

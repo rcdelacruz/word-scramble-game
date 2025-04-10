@@ -49,7 +49,7 @@ describe('Game API', () => {
     it('should validate the size parameter', async () => {
       const res = await request(app)
         .get('/api/game/letters?size=999') // Invalid size
-        .expect(200); // Should still return 200 but with default size
+        .expect(200); // Should return 200 with default size
 
       expect(res.body).to.have.property('success', true);
       expect(res.body).to.have.property('letters');
@@ -157,7 +157,7 @@ describe('Game API', () => {
       expect(res.body).to.have.property('scores');
       expect(res.body.scores).to.be.an('array');
       expect(res.body.scores).to.have.lengthOf(3);
-      
+
       // Should be sorted by score (descending)
       expect(res.body.scores[0].score).to.equal(200);
       expect(res.body.scores[1].score).to.equal(150);
@@ -173,7 +173,7 @@ describe('Game API', () => {
       expect(res.body).to.have.property('scores');
       expect(res.body.scores).to.be.an('array');
       expect(res.body.scores).to.have.lengthOf(2);
-      
+
       // Should only return the top 2 scores
       expect(res.body.scores[0].score).to.equal(200);
       expect(res.body.scores[1].score).to.equal(150);
