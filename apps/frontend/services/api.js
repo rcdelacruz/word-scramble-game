@@ -4,27 +4,66 @@ import axios from 'axios';
 const isLocalhost = typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
+// Determine if we're in development or production
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 // For Vercel deployment, we need to use the API routes in the Next.js app
 // or the absolute URL to the backend if it's deployed separately
 const getBaseURL = () => {
-  // If we're on localhost, use the local backend
-  if (isLocalhost) {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003/api';
+  // PRODUCTION ENVIRONMENT: Never use localhost in production
+  if (!isDevelopment) {
+    // First priority: Use the environment variable if it exists
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      console.log('PRODUCTION: Using API URL from environment:', process.env.NEXT_PUBLIC_API_URL);
+      return process.env.NEXT_PUBLIC_API_URL;
+    }
+
+    // Second priority: If we're using API routes within the Next.js app
+    if (process.env.NEXT_PUBLIC_USE_API_ROUTES === 'true') {
+      console.log('PRODUCTION: Using Next.js API routes');
+      return '/api';
+    }
+
+    // Last resort for production: Use the hardcoded production URL
+    console.log('PRODUCTION: Using hardcoded production URL');
+    return 'https://scramble.rcdc.me/api';
   }
 
-  // For Vercel deployment with monorepo
-  // Check if we're using API routes within the Next.js app
+  // DEVELOPMENT ENVIRONMENT: Only reach here if in development
+
+  // First priority: Use the environment variable if it exists
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    console.log('DEVELOPMENT: Using API URL from environment:', process.env.NEXT_PUBLIC_API_URL);
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  // Second priority: If we're using API routes within the Next.js app
   if (process.env.NEXT_PUBLIC_USE_API_ROUTES === 'true') {
+    console.log('DEVELOPMENT: Using Next.js API routes');
     return '/api';
   }
 
-  // Otherwise use the deployed backend URL
-  return process.env.NEXT_PUBLIC_API_URL || 'https://word-scramble-backend.vercel.app/api';
+  // Last resort for development: Use localhost
+  console.log('DEVELOPMENT: Using localhost backend on port 3003');
+  return 'http://localhost:3003/api';
 };
+
+// Get the base URL for API requests
+const baseURL = getBaseURL();
+
+// Log the API configuration for debugging
+console.log('API Configuration:', {
+  baseURL,
+  isLocalhost,
+  isDevelopment,
+  nextPublicApiUrl: process.env.NEXT_PUBLIC_API_URL,
+  useApiRoutes: process.env.NEXT_PUBLIC_USE_API_ROUTES,
+  nodeEnv: process.env.NODE_ENV
+});
 
 // Create an axios instance with default config
 const api = axios.create({
-  baseURL: getBaseURL(),
+  baseURL,
   headers: {
     'Content-Type': 'application/json'
   },
